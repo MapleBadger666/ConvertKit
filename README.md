@@ -1,6 +1,10 @@
 # FileMorph
 
-FileMorph is a local Streamlit MVP for common file conversions. Uploaded files are written to a local `uploads/` folder and generated files are written to `output/`. Nothing is uploaded to an external service.
+FileMorph is a local Streamlit app for quick file conversion workflows. It currently focuses on common image conversions and practical PDF transformations, with generated files saved to `output/` on your machine.
+
+## Local-Only Privacy Note
+
+FileMorph runs locally. Uploaded files are written to the local `uploads/` directory, converted files are written to `output/`, and no cloud APIs or external upload services are used by the app.
 
 ## Features
 
@@ -11,36 +15,62 @@ FileMorph is a local Streamlit MVP for common file conversions. Uploaded files a
 - Convert PDF pages to PNG images.
 - Extract text from text-based PDFs into TXT.
 - Convert PDF to DOCX with `pdf2docx` as a first MVP implementation.
+- Clear UI feedback for uploaded files, conversion status, successful outputs, and failed files.
 
-## Setup
+## Quick Start
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-```
-
-PDF-to-PNG conversion uses `pdf2image`, which also requires Poppler to be installed on your system.
-
-On macOS:
-
-```bash
-brew install poppler
-```
-
-## Run the App
-
-```bash
 streamlit run app/main.py
 ```
 
 Then open the local Streamlit URL shown in the terminal.
 
-## Run Tests
+Run tests with:
 
 ```bash
 python -m pytest -q
 ```
+
+## Supported Conversions
+
+| Source | Target | Batch support | Notes |
+| --- | --- | --- | --- |
+| JPG, JPEG, PNG, WEBP | JPG | Yes | Alpha channels are flattened onto white for JPG output. |
+| JPG, JPEG, PNG, WEBP | PNG | Yes | Preserves a broadly compatible image output. |
+| JPG, JPEG, PNG, WEBP | WEBP | Yes | Uses Pillow for local conversion. |
+| JPG, JPEG, PNG, WEBP | Single PDF | Yes | Combines uploaded images into one PDF. |
+| PDF | PNG pages | One or more PDFs | Requires Poppler to be installed locally. |
+| PDF | TXT | One or more PDFs | Works best with text-based PDFs that contain selectable text. |
+| PDF | DOCX | One or more PDFs | Uses `pdf2docx`; complex layouts may need manual cleanup. |
+
+## Screenshots
+
+Screenshots should be added later under `docs/screenshots/`. Do not commit real user files or sensitive document previews. A placeholder `.gitkeep` file keeps the folder available in git.
+
+Suggested future screenshots:
+
+- Main upload and conversion screen.
+- Batch image conversion with ZIP download.
+- PDF conversion error state when Poppler is missing.
+
+## Limitations
+
+- OCR is not included. Scanned PDFs will not become editable text unless OCR is added in a future release.
+- PDF-to-PNG requires Poppler command-line tools in addition to Python packages.
+- PDF-to-DOCX quality depends on the source PDF layout and may not perfectly preserve columns, tables, fonts, or spacing.
+- Uploaded source files remain in `uploads/` and generated files remain in `output/` until manually removed.
+- The app is designed for local MVP usage, not multi-user hosted deployments.
+
+## Roadmap
+
+- Add cleanup controls for `uploads/` and `output/`.
+- Add richer download controls for single output files.
+- Add integration tests for PDF workflows with small fixture files.
+- Add optional OCR support for scanned PDFs.
+- Add screenshot assets once the UI is stable enough for project presentation.
 
 ## Troubleshooting
 
@@ -85,32 +115,14 @@ app/
     pdf_converter.py
   services/
     file_service.py
+audits/
+docs/
+  screenshots/
 tests/
 requirements.txt
 README.md
 ```
 
-## Short Report
+## License
 
-What works:
-
-- Image conversion for JPG, JPEG, PNG, and WEBP inputs.
-- Batch image uploads and batch image output.
-- Images can be combined into a single PDF.
-- PDF pages can be rendered to PNG when Poppler is available.
-- Text extraction works for PDFs that contain selectable text.
-- DOCX export is implemented through `pdf2docx`.
-
-Known limitations:
-
-- Scanned PDFs do not become text unless OCR is added later.
-- PDF-to-PNG depends on the system Poppler binary, not just Python packages.
-- DOCX conversion quality depends heavily on the PDF layout.
-- Uploaded source files are retained in `uploads/` for transparency during the MVP.
-
-Recommended next steps:
-
-- Add cleanup controls for `uploads/` and `output/`.
-- Add downloadable output links in the Streamlit UI.
-- Add OCR support for scanned PDFs.
-- Add integration tests for PDF workflows with small fixture files.
+MIT License. See `LICENSE`.
