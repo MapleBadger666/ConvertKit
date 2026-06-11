@@ -6,6 +6,13 @@ All notable changes to ConvertKit/FileMorph will be documented in this file.
 
 - No changes yet.
 
+## v0.2.1
+
+- Added single-file download buttons with readable labels and MIME types.
+- Added TXT preview for generated `.txt` files.
+- Clarified runtime dependency troubleshooting for Python packages, Poppler, and Tesseract.
+- Added tests for download helper behavior and TXT preview behavior.
+
 ## v0.2.0
 
 - Added local OCR text extraction for image files.

@@ -103,6 +103,14 @@ Suggested future screenshots:
 
 ## Troubleshooting
 
+### Missing Python dependencies
+
+If Streamlit or a converter reports a missing Python package such as `pypdf` or `pdf2image`, reinstall the project requirements from the repository root:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
 ### How to run the app
 
 Install the requirements, then start Streamlit from the project root:
@@ -114,7 +122,7 @@ streamlit run app/main.py
 
 ### PDF-to-PNG requires Poppler
 
-PDF-to-PNG conversion uses `pdf2image`, which needs the Poppler command-line tools. On macOS, install Poppler with:
+PDF pages to PNG uses the Python package `pdf2image` plus the Poppler command-line tools. Installing `requirements.txt` covers the Python package, but Poppler must be installed separately. On macOS, install Poppler with:
 
 ```bash
 brew install poppler
@@ -128,7 +136,7 @@ PDF-to-PNG requires Poppler. On macOS, install it with: brew install poppler
 
 ### OCR requires Tesseract
 
-Image OCR and scanned PDF OCR require the local Tesseract binary. On macOS, install it with:
+Image OCR and scanned PDF OCR require the Python package `pytesseract` plus the local Tesseract binary. Installing `requirements.txt` covers the Python package, but Tesseract must be installed separately. On macOS, install it with:
 
 ```bash
 brew install tesseract

@@ -41,6 +41,20 @@ OCR_LANGUAGE_OPTIONS = {
     "English + Simplified Chinese": "eng+chi_sim",
 }
 
+MIME_TYPES = {
+    ".txt": "text/plain",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".pdf": "application/pdf",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".zip": "application/zip",
+}
+
+EMPTY_TXT_PREVIEW_MESSAGE = (
+    "The TXT file was generated, but no readable text was found."
+)
+
 
 def readable_error(exc: Exception) -> str:
     message = str(exc).strip()
@@ -144,12 +158,45 @@ def convert_file_paths(
     return output_paths, [f"Unsupported conversion type: {conversion_type}"]
 
 
+def mime_type_for_file(file_path: Path) -> str:
+    return MIME_TYPES.get(file_path.suffix.lower(), "application/octet-stream")
+
+
+def download_label_for_file(file_path: Path) -> str:
+    extension = file_path.suffix.lower().lstrip(".")
+    label = "FILE" if not extension else extension.upper()
+    return f"Download {label}"
+
+
+def txt_preview_for_file(file_path: Path, character_limit: int = 1000) -> str:
+    text = file_path.read_text(encoding="utf-8", errors="replace")
+    preview = text[:character_limit]
+    if not preview.strip():
+        return EMPTY_TXT_PREVIEW_MESSAGE
+
+    return preview
+
+
 def show_download_button(file_path: Path, label: str) -> None:
     st.download_button(
         label,
         data=file_path.read_bytes(),
         file_name=file_path.name,
-        mime="application/zip" if file_path.suffix == ".zip" else "application/octet-stream",
+        mime=mime_type_for_file(file_path),
+    )
+
+
+def show_txt_preview(file_path: Path) -> None:
+    if file_path.suffix.lower() != ".txt":
+        return
+
+    st.write(f"TXT preview: {file_path.name}")
+    st.text_area(
+        "Preview",
+        txt_preview_for_file(file_path),
+        height=240,
+        disabled=True,
+        label_visibility="collapsed",
     )
 
 
@@ -230,8 +277,14 @@ def main() -> None:
         st.write("Generated files:")
         for output_path in output_paths:
             st.code(str(output_path))
+            show_txt_preview(output_path)
 
-        if zip_path:
+        if len(output_paths) == 1:
+            show_download_button(
+                output_paths[0],
+                download_label_for_file(output_paths[0]),
+            )
+        elif zip_path:
             st.code(str(zip_path))
             show_download_button(zip_path, "Download ZIP")
 
