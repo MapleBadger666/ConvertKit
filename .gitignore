@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 uploads/
 output/
+.DS_Store

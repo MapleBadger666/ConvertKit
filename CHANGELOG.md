@@ -6,6 +6,12 @@ All notable changes to ConvertKit/FileMorph will be documented in this file.
 
 - No changes yet.
 
+## v0.2.4
+
+- Added README screenshots.
+- Improved project demo presentation.
+- No conversion behavior changes.
+
 ## v0.2.3
 
 - Added Pillow-only OCR preprocessing for enhanced screenshot and scanned document modes.

@@ -18,6 +18,20 @@ FileMorph runs locally. Uploaded files are written to the local `uploads/` direc
 - Convert PDF to DOCX with `pdf2docx` as a first MVP implementation.
 - Clear UI feedback for uploaded files, conversion status, successful outputs, and failed files.
 
+## Demo
+
+FileMorph supports local-only conversion. Users can upload files, convert them locally, preview generated TXT output when applicable, and download generated files from the app.
+
+## Screenshots
+
+### Main UI
+
+![FileMorph main UI](docs/screenshots/main-ui.png)
+
+### Successful Conversion
+
+![Successful conversion with download button](docs/screenshots/successful-conversion.png)
+
 ## Quick Start
 
 ```bash
@@ -94,16 +108,6 @@ For best results:
 - Install `tesseract-lang` for Chinese OCR.
 - Expect screenshots with code, UI chrome, dense layouts, or dark themes to be imperfect.
 
-## Screenshots
-
-Screenshots should be added later under `docs/screenshots/`. Do not commit real user files or sensitive document previews. A placeholder `.gitkeep` file keeps the folder available in git.
-
-Suggested future screenshots:
-
-- Main upload and conversion screen.
-- Batch image conversion with ZIP download.
-- PDF conversion error state when Poppler is missing.
-
 ## Limitations
 
 - OCR quality depends on scan clarity, resolution, contrast, orientation, and installed language data.
@@ -122,7 +126,6 @@ Suggested future screenshots:
 - Add richer download controls for single output files.
 - Add integration tests for PDF workflows with small fixture files.
 - Add OCR-to-DOCX export as a future workflow.
-- Add screenshot assets once the UI is stable enough for project presentation.
 
 ## Troubleshooting
 
