@@ -6,6 +6,15 @@ All notable changes to ConvertKit/FileMorph will be documented in this file.
 
 - No changes yet.
 
+## v0.2.2
+
+- Added conversion-specific upload file type filtering in Streamlit.
+- Added OCR language detection from `tesseract --list-langs`.
+- Filtered OCR language selector options to installed local Tesseract languages.
+- Added readable warnings for missing Chinese OCR language packs.
+- Added OCR language validation before conversion.
+- Added tests for upload type filtering and OCR language parsing/validation.
+
 ## v0.2.1
 
 - Added single-file download buttons with readable labels and MIME types.

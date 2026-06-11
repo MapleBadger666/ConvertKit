@@ -10,7 +10,12 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.converters.pdf_converter import images_to_pdf, pdf_to_docx, pdf_to_png, pdf_to_txt
-from app.converters.ocr_converter import image_to_text, pdf_to_text_with_ocr
+from app.converters.ocr_converter import (
+    get_installed_tesseract_languages,
+    image_to_text,
+    pdf_to_text_with_ocr,
+    required_ocr_languages,
+)
 from app.services.file_service import (
     OUTPUT_DIR,
     create_zip_archive,
@@ -40,6 +45,10 @@ OCR_LANGUAGE_OPTIONS = {
     "Traditional Chinese": "chi_tra",
     "English + Simplified Chinese": "eng+chi_sim",
 }
+CHINESE_OCR_LANGUAGE_WARNING = (
+    "Chinese OCR language packs are not installed. "
+    "On macOS, run: brew install tesseract-lang"
+)
 
 MIME_TYPES = {
     ".txt": "text/plain",
@@ -59,6 +68,38 @@ EMPTY_TXT_PREVIEW_MESSAGE = (
 def readable_error(exc: Exception) -> str:
     message = str(exc).strip()
     return message or exc.__class__.__name__
+
+
+def get_allowed_upload_types(conversion_type: str) -> list[str]:
+    image_types = ["jpg", "jpeg", "png", "webp"]
+    pdf_types = ["pdf"]
+
+    if conversion_type.startswith("image:"):
+        return image_types
+
+    if conversion_type == "images:pdf":
+        return image_types
+
+    if conversion_type == "ocr:image_txt":
+        return image_types
+
+    if conversion_type.startswith("pdf:"):
+        return pdf_types
+
+    if conversion_type == "ocr:pdf_txt":
+        return pdf_types
+
+    return [*image_types, *pdf_types]
+
+
+def get_available_ocr_language_options(
+    installed_languages: set[str],
+) -> dict[str, str]:
+    return {
+        label: language
+        for label, language in OCR_LANGUAGE_OPTIONS.items()
+        if required_ocr_languages(language).issubset(installed_languages)
+    }
 
 
 def convert_file_paths(
@@ -209,20 +250,32 @@ def main() -> None:
     conversion_type = CONVERSION_OPTIONS[selected_label]
     selected_ocr_language = "eng"
     if conversion_type.startswith("ocr:"):
+        installed_ocr_languages: set[str] = set()
+        try:
+            installed_ocr_languages = get_installed_tesseract_languages()
+        except Exception:
+            st.warning(
+                "OCR requires Tesseract. On macOS, install it with: brew install tesseract"
+            )
+
+        available_ocr_options = get_available_ocr_language_options(
+            installed_ocr_languages
+        )
+        if not available_ocr_options:
+            available_ocr_options = {"English": "eng"}
+
         selected_ocr_language_label = st.selectbox(
             "OCR language",
-            list(OCR_LANGUAGE_OPTIONS),
+            list(available_ocr_options),
         )
-        selected_ocr_language = OCR_LANGUAGE_OPTIONS[selected_ocr_language_label]
-        st.info(
-            "Chinese OCR may require extra Tesseract language packs. "
-            "On macOS, install them with: brew install tesseract-lang"
-        )
+        selected_ocr_language = available_ocr_options[selected_ocr_language_label]
+        if not {"chi_sim", "chi_tra"}.issubset(installed_ocr_languages):
+            st.warning(CHINESE_OCR_LANGUAGE_WARNING)
 
     uploaded_files = st.file_uploader(
         "Upload files",
         accept_multiple_files=True,
-        type=["jpg", "jpeg", "png", "webp", "pdf"],
+        type=get_allowed_upload_types(conversion_type),
     )
 
     if uploaded_files:

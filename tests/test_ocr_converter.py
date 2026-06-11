@@ -2,10 +2,14 @@ from pathlib import Path
 
 from app.converters import ocr_converter
 from app.converters.ocr_converter import (
+    OCR_LANGUAGE_ERROR_PREFIX,
     TESSERACT_ERROR_MESSAGE,
     ensure_tesseract_available,
     image_to_text,
     ocr_output_path,
+    parse_tesseract_languages,
+    required_ocr_languages,
+    validate_ocr_language_available,
 )
 
 
@@ -52,3 +56,33 @@ def test_image_to_text_rejects_unsupported_extension_before_tesseract_check(
         assert "Unsupported image format for OCR" in str(exc)
     else:
         raise AssertionError("Expected unsupported image format to raise ValueError")
+
+
+def test_parse_tesseract_languages_skips_header_lines():
+    output = """
+List of available languages in "/opt/homebrew/share/tessdata/" (3):
+eng
+chi_sim
+chi_tra
+"""
+
+    assert parse_tesseract_languages(output) == {"eng", "chi_sim", "chi_tra"}
+
+
+def test_required_ocr_languages_splits_combined_language():
+    assert required_ocr_languages("eng+chi_sim") == {"eng", "chi_sim"}
+
+
+def test_validate_ocr_language_available_accepts_installed_languages():
+    validate_ocr_language_available("eng+chi_sim", {"eng", "chi_sim"})
+
+
+def test_validate_ocr_language_available_raises_readable_error_for_missing_language():
+    try:
+        validate_ocr_language_available("eng+chi_sim", {"eng"})
+    except RuntimeError as exc:
+        assert OCR_LANGUAGE_ERROR_PREFIX in str(exc)
+        assert "chi_sim" in str(exc)
+        assert "tesseract --list-langs" in str(exc)
+    else:
+        raise AssertionError("Expected missing OCR language to raise RuntimeError")

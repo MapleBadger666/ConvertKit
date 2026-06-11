@@ -3,6 +3,8 @@ from pathlib import Path
 from app.main import (
     EMPTY_TXT_PREVIEW_MESSAGE,
     download_label_for_file,
+    get_allowed_upload_types,
+    get_available_ocr_language_options,
     mime_type_for_file,
     txt_preview_for_file,
 )
@@ -48,3 +50,31 @@ def test_txt_preview_shows_empty_message_for_whitespace_only_file(tmp_path: Path
     preview = txt_preview_for_file(output_path)
 
     assert preview == EMPTY_TXT_PREVIEW_MESSAGE
+
+
+def test_get_allowed_upload_types_for_image_conversions():
+    assert get_allowed_upload_types("image:jpg") == ["jpg", "jpeg", "png", "webp"]
+    assert get_allowed_upload_types("image:png") == ["jpg", "jpeg", "png", "webp"]
+    assert get_allowed_upload_types("images:pdf") == ["jpg", "jpeg", "png", "webp"]
+    assert get_allowed_upload_types("ocr:image_txt") == ["jpg", "jpeg", "png", "webp"]
+
+
+def test_get_allowed_upload_types_for_pdf_conversions():
+    assert get_allowed_upload_types("pdf:txt") == ["pdf"]
+    assert get_allowed_upload_types("pdf:png") == ["pdf"]
+    assert get_allowed_upload_types("pdf:docx") == ["pdf"]
+    assert get_allowed_upload_types("ocr:pdf_txt") == ["pdf"]
+
+
+def test_get_allowed_upload_types_falls_back_to_all_supported_types():
+    assert get_allowed_upload_types("unknown") == ["jpg", "jpeg", "png", "webp", "pdf"]
+
+
+def test_get_available_ocr_language_options_filters_missing_languages():
+    available = get_available_ocr_language_options({"eng", "chi_sim"})
+
+    assert available == {
+        "English": "eng",
+        "Simplified Chinese": "chi_sim",
+        "English + Simplified Chinese": "eng+chi_sim",
+    }

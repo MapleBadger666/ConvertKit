@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
 from shutil import which
 
 from PIL import Image
@@ -18,11 +19,64 @@ from app.services.file_service import (
 TESSERACT_ERROR_MESSAGE = (
     "OCR requires Tesseract. On macOS, install it with: brew install tesseract"
 )
+OCR_LANGUAGE_ERROR_PREFIX = "OCR language data is not installed for"
 
 
 def ensure_tesseract_available() -> None:
     if not which("tesseract"):
         raise RuntimeError(TESSERACT_ERROR_MESSAGE)
+
+
+def parse_tesseract_languages(command_output: str) -> set[str]:
+    languages: set[str] = set()
+    for line in command_output.splitlines():
+        language = line.strip()
+        if not language or language.lower().startswith("list of available languages"):
+            continue
+        languages.add(language)
+
+    return languages
+
+
+def get_installed_tesseract_languages() -> set[str]:
+    ensure_tesseract_available()
+    try:
+        completed = subprocess.run(
+            ["tesseract", "--list-langs"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.SubprocessError as exc:
+        raise RuntimeError(
+            "Could not read installed Tesseract languages. "
+            "Run `tesseract --list-langs` to check your local installation."
+        ) from exc
+
+    return parse_tesseract_languages(f"{completed.stdout}\n{completed.stderr}")
+
+
+def required_ocr_languages(language: str) -> set[str]:
+    return {part.strip() for part in language.split("+") if part.strip()}
+
+
+def validate_ocr_language_available(
+    language: str,
+    installed_languages: set[str] | None = None,
+) -> None:
+    available_languages = (
+        get_installed_tesseract_languages()
+        if installed_languages is None
+        else installed_languages
+    )
+    missing_languages = sorted(required_ocr_languages(language) - available_languages)
+    if missing_languages:
+        missing = ", ".join(missing_languages)
+        raise RuntimeError(
+            f"{OCR_LANGUAGE_ERROR_PREFIX}: {missing}. "
+            "Run `tesseract --list-langs` to see installed languages. "
+            "On macOS, install additional language packs with: brew install tesseract-lang"
+        )
 
 
 def ocr_output_path(
@@ -51,6 +105,7 @@ def image_to_text(input_path: Path, language: str = "eng") -> str:
         raise ValueError(f"Unsupported image format for OCR: {source.name}")
 
     ensure_tesseract_available()
+    validate_ocr_language_available(language)
     with Image.open(source) as image:
         return _image_to_text(image, language)
 
@@ -65,6 +120,7 @@ def pdf_to_text_with_ocr(
         raise ValueError(f"Unsupported PDF file for OCR: {source.name}")
 
     ensure_tesseract_available()
+    validate_ocr_language_available(language)
     try:
         ensure_poppler_available()
     except RuntimeError as exc:

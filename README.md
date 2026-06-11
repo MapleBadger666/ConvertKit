@@ -72,6 +72,12 @@ For Chinese OCR language data, install the additional language package:
 brew install tesseract-lang
 ```
 
+Check installed OCR languages with:
+
+```bash
+tesseract --list-langs
+```
+
 ## Screenshots
 
 Screenshots should be added later under `docs/screenshots/`. Do not commit real user files or sensitive document previews. A placeholder `.gitkeep` file keeps the folder available in git.
@@ -148,10 +154,22 @@ For Chinese language OCR, also install:
 brew install tesseract-lang
 ```
 
+To check which OCR languages are installed locally, run:
+
+```bash
+tesseract --list-langs
+```
+
 If Tesseract is missing, FileMorph shows this message:
 
 ```text
 OCR requires Tesseract. On macOS, install it with: brew install tesseract
+```
+
+If `chi_sim` or `chi_tra` is missing, the Streamlit UI will hide OCR options that require those languages and show this warning:
+
+```text
+Chinese OCR language packs are not installed. On macOS, run: brew install tesseract-lang
 ```
 
 ### Scanned PDFs and text extraction
