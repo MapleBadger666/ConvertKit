@@ -6,6 +6,7 @@ FileMorph is a local Streamlit MVP for common file conversions. Uploaded files a
 
 - Batch image conversion between JPG, PNG, and WEBP.
 - Safe JPG output for transparent images by flattening alpha onto a white background.
+- ZIP download packaging when a conversion creates multiple output files.
 - Convert multiple images into one PDF.
 - Convert PDF pages to PNG images.
 - Extract text from text-based PDFs into TXT.
@@ -40,6 +41,39 @@ Then open the local Streamlit URL shown in the terminal.
 ```bash
 python -m pytest -q
 ```
+
+## Troubleshooting
+
+### How to run the app
+
+Install the requirements, then start Streamlit from the project root:
+
+```bash
+python -m pip install -r requirements.txt
+streamlit run app/main.py
+```
+
+### PDF-to-PNG requires Poppler
+
+PDF-to-PNG conversion uses `pdf2image`, which needs the Poppler command-line tools. On macOS, install Poppler with:
+
+```bash
+brew install poppler
+```
+
+If Poppler is missing, FileMorph shows this message:
+
+```text
+PDF-to-PNG requires Poppler. On macOS, install it with: brew install poppler
+```
+
+### Scanned PDFs and text extraction
+
+TXT export works for text-based PDFs that contain selectable text. Scanned PDFs are usually images inside a PDF, so they do not become editable text without OCR. OCR is intentionally not included in this MVP.
+
+### PDF-to-DOCX layout quality
+
+PDF-to-DOCX conversion is handled by `pdf2docx` for the first MVP. Complex layouts, tables, columns, unusual fonts, and scanned pages may not convert perfectly because PDFs do not store document structure the same way DOCX files do.
 
 ## Project Structure
 

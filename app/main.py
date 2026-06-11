@@ -9,10 +9,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.converters.image_converter import convert_images
 from app.converters.pdf_converter import images_to_pdf, pdf_to_docx, pdf_to_png, pdf_to_txt
 from app.services.file_service import (
     OUTPUT_DIR,
+    create_zip_archive,
     ensure_directory,
     is_supported_image,
     is_supported_pdf,
@@ -31,47 +31,83 @@ CONVERSION_OPTIONS = {
 }
 
 
-def validate_files(file_paths: list[Path], conversion_type: str) -> list[str]:
-    errors = []
-
-    if conversion_type.startswith("image:") or conversion_type == "images:pdf":
-        for path in file_paths:
-            if not is_supported_image(path):
-                errors.append(f"{path.name}: unsupported image format.")
-
-    if conversion_type.startswith("pdf:"):
-        for path in file_paths:
-            if not is_supported_pdf(path):
-                errors.append(f"{path.name}: expected a PDF file.")
-
-        if len(file_paths) > 1:
-            errors.append("PDF conversions currently process one PDF at a time.")
-
-    return errors
+def readable_error(exc: Exception) -> str:
+    message = str(exc).strip()
+    return message or exc.__class__.__name__
 
 
-def run_conversion(file_paths: list[Path], conversion_type: str) -> list[Path]:
+def convert_file_paths(
+    file_paths: list[Path],
+    conversion_type: str,
+) -> tuple[list[Path], list[str]]:
+    output_paths: list[Path] = []
+    failed_files: list[str] = []
     ensure_directory(OUTPUT_DIR)
 
     if conversion_type.startswith("image:"):
         target_format = conversion_type.split(":", maxsplit=1)[1]
-        return convert_images(file_paths, target_format, OUTPUT_DIR)
+        for file_path in file_paths:
+            if not is_supported_image(file_path):
+                failed_files.append(f"{file_path.name}: unsupported image format.")
+                continue
+
+            try:
+                from app.converters.image_converter import convert_image
+
+                output_paths.append(convert_image(file_path, target_format, OUTPUT_DIR))
+            except Exception as exc:
+                failed_files.append(f"{file_path.name}: {readable_error(exc)}")
+
+        return output_paths, failed_files
 
     if conversion_type == "images:pdf":
-        return [images_to_pdf(file_paths, OUTPUT_DIR)]
+        image_paths = []
+        for file_path in file_paths:
+            if is_supported_image(file_path):
+                image_paths.append(file_path)
+            else:
+                failed_files.append(f"{file_path.name}: unsupported image format.")
 
-    pdf_path = file_paths[0]
+        if image_paths:
+            try:
+                output_paths.append(images_to_pdf(image_paths, OUTPUT_DIR))
+            except Exception as exc:
+                failed_files.append(f"Images to PDF: {readable_error(exc)}")
+        else:
+            failed_files.append("Images to PDF: upload at least one supported image.")
 
-    if conversion_type == "pdf:png":
-        return pdf_to_png(pdf_path, OUTPUT_DIR)
+        return output_paths, failed_files
 
-    if conversion_type == "pdf:txt":
-        return [pdf_to_txt(pdf_path, OUTPUT_DIR)]
+    if conversion_type.startswith("pdf:"):
+        for file_path in file_paths:
+            if not is_supported_pdf(file_path):
+                failed_files.append(f"{file_path.name}: expected a PDF file.")
+                continue
 
-    if conversion_type == "pdf:docx":
-        return [pdf_to_docx(pdf_path, OUTPUT_DIR)]
+            try:
+                if conversion_type == "pdf:png":
+                    output_paths.extend(pdf_to_png(file_path, OUTPUT_DIR))
+                elif conversion_type == "pdf:txt":
+                    output_paths.append(pdf_to_txt(file_path, OUTPUT_DIR))
+                elif conversion_type == "pdf:docx":
+                    output_paths.append(pdf_to_docx(file_path, OUTPUT_DIR))
+                else:
+                    failed_files.append(f"{file_path.name}: unsupported PDF conversion.")
+            except Exception as exc:
+                failed_files.append(f"{file_path.name}: {readable_error(exc)}")
 
-    raise ValueError(f"Unsupported conversion type: {conversion_type}")
+        return output_paths, failed_files
+
+    return output_paths, [f"Unsupported conversion type: {conversion_type}"]
+
+
+def show_download_button(file_path: Path, label: str) -> None:
+    st.download_button(
+        label,
+        data=file_path.read_bytes(),
+        file_name=file_path.name,
+        mime="application/zip" if file_path.suffix == ".zip" else "application/octet-stream",
+    )
 
 
 def main() -> None:
@@ -87,29 +123,58 @@ def main() -> None:
         type=["jpg", "jpeg", "png", "webp", "pdf"],
     )
 
+    if uploaded_files:
+        st.write("Uploaded files:")
+        for uploaded_file in uploaded_files:
+            st.code(uploaded_file.name)
+
     if st.button("Convert", type="primary"):
         if not uploaded_files:
             st.error("Upload at least one file first.")
             return
 
+        status = st.empty()
+        status.info("Saving uploaded files...")
+
         try:
             saved_files = save_uploaded_files(uploaded_files)
-            validation_errors = validate_files(saved_files, conversion_type)
-
-            if validation_errors:
-                for error in validation_errors:
-                    st.error(error)
-                return
-
-            output_paths = run_conversion(saved_files, conversion_type)
         except Exception as exc:
-            st.error(f"Conversion failed: {exc}")
+            status.error(f"Upload failed: {readable_error(exc)}")
             return
 
-        st.success("Conversion complete.")
+        status.info("Converting files...")
+        with st.spinner("Converting..."):
+            output_paths, failed_files = convert_file_paths(saved_files, conversion_type)
+
+        if output_paths:
+            status.success(
+                f"Conversion complete. {len(output_paths)} successful output(s)."
+            )
+        else:
+            status.error("Conversion finished with no successful outputs.")
+
+        if failed_files:
+            st.error("Some files could not be converted.")
+            for failed_file in failed_files:
+                st.warning(failed_file)
+
+        if not output_paths:
+            return
+
+        zip_path = None
+        if len(output_paths) > 1:
+            try:
+                zip_path = create_zip_archive(output_paths, OUTPUT_DIR)
+            except Exception as exc:
+                st.warning(f"ZIP packaging failed: {readable_error(exc)}")
+
         st.write("Generated files:")
         for output_path in output_paths:
             st.code(str(output_path))
+
+        if zip_path:
+            st.code(str(zip_path))
+            show_download_button(zip_path, "Download ZIP")
 
 
 if __name__ == "__main__":

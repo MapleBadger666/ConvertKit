@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from shutil import which
 
 from PIL import Image
 
@@ -12,6 +13,16 @@ from app.services.file_service import (
     is_supported_pdf,
     unique_output_path,
 )
+
+
+POPPLER_ERROR_MESSAGE = (
+    "PDF-to-PNG requires Poppler. On macOS, install it with: brew install poppler"
+)
+
+
+def ensure_poppler_available() -> None:
+    if not which("pdfinfo") or not which("pdftoppm"):
+        raise RuntimeError(POPPLER_ERROR_MESSAGE)
 
 
 def images_to_pdf(
@@ -55,17 +66,25 @@ def pdf_to_png(
 
     try:
         from pdf2image import convert_from_path
+        from pdf2image.exceptions import PDFInfoNotInstalledError
     except ImportError as exc:
         raise RuntimeError("pdf2image is required for PDF to PNG conversion.") from exc
 
+    ensure_poppler_available()
     output_directory = ensure_directory(output_dir)
-    pages = convert_from_path(source, dpi=dpi)
+    try:
+        pages = convert_from_path(source, dpi=dpi)
+    except PDFInfoNotInstalledError as exc:
+        raise RuntimeError(POPPLER_ERROR_MESSAGE) from exc
+
     output_paths: list[Path] = []
 
     for index, page in enumerate(pages, start=1):
-        output_path = output_directory / f"{source.stem}-page-{index}.png"
-        if output_path.exists():
-            output_path = unique_output_path(f"{source.stem}-page-{index}.png", "png", output_directory)
+        output_path = unique_output_path(
+            f"{source.stem}-page-{index}.png",
+            "png",
+            output_directory,
+        )
         page.save(output_path, "PNG")
         output_paths.append(output_path)
 

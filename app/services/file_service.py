@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from uuid import uuid4
+from zipfile import ZIP_DEFLATED, ZipFile
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -40,10 +41,37 @@ def unique_output_path(
     extension = target_extension.lower().lstrip(".")
     candidate = output_directory / f"{source.stem}.{extension}"
 
-    if not candidate.exists():
-        return candidate
+    counter = 1
+    while candidate.exists():
+        candidate = output_directory / f"{source.stem}_{counter}.{extension}"
+        counter += 1
 
-    return output_directory / f"{source.stem}-{uuid4().hex[:8]}.{extension}"
+    return candidate
+
+
+def create_zip_archive(
+    file_paths: list[str | Path],
+    output_dir: str | Path = OUTPUT_DIR,
+    archive_name: str = "converted-files.zip",
+) -> Path:
+    if not file_paths:
+        raise ValueError("At least one file is required to create a ZIP archive.")
+
+    output_path = unique_output_path(archive_name, "zip", output_dir)
+
+    with ZipFile(output_path, "w", compression=ZIP_DEFLATED) as archive:
+        used_names: set[str] = set()
+        for file_path in file_paths:
+            path = Path(file_path)
+            arcname = path.name
+            counter = 1
+            while arcname in used_names:
+                arcname = f"{path.stem}_{counter}{path.suffix}"
+                counter += 1
+            used_names.add(arcname)
+            archive.write(path, arcname=arcname)
+
+    return output_path
 
 
 def save_uploaded_file(uploaded_file, upload_dir: str | Path = UPLOAD_DIR) -> Path:

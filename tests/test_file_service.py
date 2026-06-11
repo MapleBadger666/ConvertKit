@@ -1,4 +1,13 @@
-from app.services.file_service import get_extension, is_supported_image, is_supported_pdf
+from pathlib import Path
+from zipfile import ZipFile
+
+from app.services.file_service import (
+    create_zip_archive,
+    get_extension,
+    is_supported_image,
+    is_supported_pdf,
+    unique_output_path,
+)
 
 
 def test_get_extension_is_case_insensitive():
@@ -16,3 +25,39 @@ def test_supported_image_extensions():
 def test_supported_pdf_extension():
     assert is_supported_pdf("document.pdf")
     assert not is_supported_pdf("document.txt")
+
+
+def test_unique_output_path_returns_original_name_when_available(tmp_path: Path):
+    output_path = unique_output_path("file.jpg", "png", tmp_path)
+
+    assert output_path == tmp_path / "file.png"
+
+
+def test_unique_output_path_adds_incrementing_suffix(tmp_path: Path):
+    (tmp_path / "file.png").write_text("existing", encoding="utf-8")
+    (tmp_path / "file_1.png").write_text("existing", encoding="utf-8")
+
+    output_path = unique_output_path("file.jpg", "png", tmp_path)
+
+    assert output_path == tmp_path / "file_2.png"
+
+
+def test_unique_output_path_normalizes_target_extension(tmp_path: Path):
+    (tmp_path / "file.webp").write_text("existing", encoding="utf-8")
+
+    output_path = unique_output_path("file.png", ".WEBP", tmp_path)
+
+    assert output_path == tmp_path / "file_1.webp"
+
+
+def test_create_zip_archive_packages_files(tmp_path: Path):
+    first = tmp_path / "first.txt"
+    second = tmp_path / "second.txt"
+    first.write_text("one", encoding="utf-8")
+    second.write_text("two", encoding="utf-8")
+
+    zip_path = create_zip_archive([first, second], tmp_path)
+
+    assert zip_path == tmp_path / "converted-files.zip"
+    with ZipFile(zip_path) as archive:
+        assert sorted(archive.namelist()) == ["first.txt", "second.txt"]
