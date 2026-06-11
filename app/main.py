@@ -10,6 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.converters.pdf_converter import images_to_pdf, pdf_to_docx, pdf_to_png, pdf_to_txt
+from app.converters.ocr_converter import image_to_text, pdf_to_text_with_ocr
 from app.services.file_service import (
     OUTPUT_DIR,
     create_zip_archive,
@@ -17,6 +18,7 @@ from app.services.file_service import (
     is_supported_image,
     is_supported_pdf,
     save_uploaded_files,
+    unique_output_path,
 )
 
 
@@ -28,6 +30,15 @@ CONVERSION_OPTIONS = {
     "PDF pages to PNG": "pdf:png",
     "PDF to TXT": "pdf:txt",
     "PDF to DOCX": "pdf:docx",
+    "Image to TXT (OCR)": "ocr:image_txt",
+    "Scanned PDF to TXT (OCR)": "ocr:pdf_txt",
+}
+
+OCR_LANGUAGE_OPTIONS = {
+    "English": "eng",
+    "Simplified Chinese": "chi_sim",
+    "Traditional Chinese": "chi_tra",
+    "English + Simplified Chinese": "eng+chi_sim",
 }
 
 
@@ -39,6 +50,7 @@ def readable_error(exc: Exception) -> str:
 def convert_file_paths(
     file_paths: list[Path],
     conversion_type: str,
+    ocr_language: str = "eng",
 ) -> tuple[list[Path], list[str]]:
     output_paths: list[Path] = []
     failed_files: list[str] = []
@@ -75,6 +87,37 @@ def convert_file_paths(
                 failed_files.append(f"Images to PDF: {readable_error(exc)}")
         else:
             failed_files.append("Images to PDF: upload at least one supported image.")
+
+        return output_paths, failed_files
+
+    if conversion_type == "ocr:image_txt":
+        for file_path in file_paths:
+            if not is_supported_image(file_path):
+                failed_files.append(f"{file_path.name}: expected a supported image file.")
+                continue
+
+            try:
+                text = image_to_text(file_path, ocr_language)
+                output_path = unique_output_path(file_path, "txt", OUTPUT_DIR)
+                output_path.write_text(text, encoding="utf-8")
+                output_paths.append(output_path)
+            except Exception as exc:
+                failed_files.append(f"{file_path.name}: {readable_error(exc)}")
+
+        return output_paths, failed_files
+
+    if conversion_type == "ocr:pdf_txt":
+        for file_path in file_paths:
+            if not is_supported_pdf(file_path):
+                failed_files.append(f"{file_path.name}: expected a PDF file.")
+                continue
+
+            try:
+                output_paths.append(
+                    pdf_to_text_with_ocr(file_path, OUTPUT_DIR, ocr_language)
+                )
+            except Exception as exc:
+                failed_files.append(f"{file_path.name}: {readable_error(exc)}")
 
         return output_paths, failed_files
 
@@ -117,6 +160,18 @@ def main() -> None:
 
     selected_label = st.selectbox("Conversion type", list(CONVERSION_OPTIONS))
     conversion_type = CONVERSION_OPTIONS[selected_label]
+    selected_ocr_language = "eng"
+    if conversion_type.startswith("ocr:"):
+        selected_ocr_language_label = st.selectbox(
+            "OCR language",
+            list(OCR_LANGUAGE_OPTIONS),
+        )
+        selected_ocr_language = OCR_LANGUAGE_OPTIONS[selected_ocr_language_label]
+        st.info(
+            "Chinese OCR may require extra Tesseract language packs. "
+            "On macOS, install them with: brew install tesseract-lang"
+        )
+
     uploaded_files = st.file_uploader(
         "Upload files",
         accept_multiple_files=True,
@@ -144,7 +199,11 @@ def main() -> None:
 
         status.info("Converting files...")
         with st.spinner("Converting..."):
-            output_paths, failed_files = convert_file_paths(saved_files, conversion_type)
+            output_paths, failed_files = convert_file_paths(
+                saved_files,
+                conversion_type,
+                selected_ocr_language,
+            )
 
         if output_paths:
             status.success(

@@ -14,6 +14,7 @@ FileMorph runs locally. Uploaded files are written to the local `uploads/` direc
 - Convert multiple images into one PDF.
 - Convert PDF pages to PNG images.
 - Extract text from text-based PDFs into TXT.
+- Extract plain text from scanned PDFs and image files with local OCR.
 - Convert PDF to DOCX with `pdf2docx` as a first MVP implementation.
 - Clear UI feedback for uploaded files, conversion status, successful outputs, and failed files.
 
@@ -45,6 +46,31 @@ python -m pytest -q
 | PDF | PNG pages | One or more PDFs | Requires Poppler to be installed locally. |
 | PDF | TXT | One or more PDFs | Works best with text-based PDFs that contain selectable text. |
 | PDF | DOCX | One or more PDFs | Uses `pdf2docx`; complex layouts may need manual cleanup. |
+| JPG, JPEG, PNG, WEBP | TXT with OCR | Yes | Requires Tesseract to be installed locally. |
+| Scanned PDF | TXT with OCR | One or more PDFs | Converts PDF pages to images, then runs OCR locally. |
+
+## OCR Text Extraction
+
+FileMorph supports local OCR for image files and scanned PDFs through `pytesseract` and the Tesseract command-line engine. OCR output is saved as plain `.txt` files in `output/`.
+
+Supported OCR language options in the UI:
+
+- English: `eng`
+- Simplified Chinese: `chi_sim`
+- Traditional Chinese: `chi_tra`
+- English + Simplified Chinese: `eng+chi_sim`
+
+On macOS, install Tesseract with:
+
+```bash
+brew install tesseract
+```
+
+For Chinese OCR language data, install the additional language package:
+
+```bash
+brew install tesseract-lang
+```
 
 ## Screenshots
 
@@ -58,7 +84,10 @@ Suggested future screenshots:
 
 ## Limitations
 
-- OCR is not included. Scanned PDFs will not become editable text unless OCR is added in a future release.
+- OCR quality depends on scan clarity, resolution, contrast, orientation, and installed language data.
+- Handwriting may be inaccurate or unreadable.
+- Complex tables, columns, and visual layouts are not preserved in OCR TXT output.
+- OCR output is plain text, not formatted DOCX.
 - PDF-to-PNG requires Poppler command-line tools in addition to Python packages.
 - PDF-to-DOCX quality depends on the source PDF layout and may not perfectly preserve columns, tables, fonts, or spacing.
 - Uploaded source files remain in `uploads/` and generated files remain in `output/` until manually removed.
@@ -69,7 +98,7 @@ Suggested future screenshots:
 - Add cleanup controls for `uploads/` and `output/`.
 - Add richer download controls for single output files.
 - Add integration tests for PDF workflows with small fixture files.
-- Add optional OCR support for scanned PDFs.
+- Add OCR-to-DOCX export as a future workflow.
 - Add screenshot assets once the UI is stable enough for project presentation.
 
 ## Troubleshooting
@@ -97,9 +126,31 @@ If Poppler is missing, FileMorph shows this message:
 PDF-to-PNG requires Poppler. On macOS, install it with: brew install poppler
 ```
 
+### OCR requires Tesseract
+
+Image OCR and scanned PDF OCR require the local Tesseract binary. On macOS, install it with:
+
+```bash
+brew install tesseract
+```
+
+For Chinese language OCR, also install:
+
+```bash
+brew install tesseract-lang
+```
+
+If Tesseract is missing, FileMorph shows this message:
+
+```text
+OCR requires Tesseract. On macOS, install it with: brew install tesseract
+```
+
 ### Scanned PDFs and text extraction
 
-TXT export works for text-based PDFs that contain selectable text. Scanned PDFs are usually images inside a PDF, so they do not become editable text without OCR. OCR is intentionally not included in this MVP.
+TXT export works for text-based PDFs that contain selectable text. Scanned PDFs are usually images inside a PDF, so use the scanned PDF OCR option when selectable text is not available.
+
+OCR has practical limits: scanned quality matters, handwriting may be inaccurate, complex tables and layouts are not preserved, and OCR TXT output is plain text rather than formatted DOCX.
 
 ### PDF-to-DOCX layout quality
 
@@ -112,6 +163,7 @@ app/
   main.py
   converters/
     image_converter.py
+    ocr_converter.py
     pdf_converter.py
   services/
     file_service.py

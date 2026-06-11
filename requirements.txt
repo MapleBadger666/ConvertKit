@@ -3,4 +3,5 @@ Pillow>=10.0
 pypdf>=4.0
 pdf2image>=1.17
 pdf2docx>=0.5.8
+pytesseract>=0.3.10
 pytest>=8.0

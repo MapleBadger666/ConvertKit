@@ -4,6 +4,19 @@ All notable changes to ConvertKit/FileMorph will be documented in this file.
 
 ## Unreleased
 
+- No changes yet.
+
+## v0.2.0
+
+- Added local OCR text extraction for image files.
+- Added local OCR text extraction for scanned PDFs.
+- Added OCR language selection in Streamlit for English, Simplified Chinese, Traditional Chinese, and English + Simplified Chinese.
+- Added Tesseract dependency checks with readable user-facing errors.
+- Documented OCR setup and limitations.
+- Added OCR tests that do not require a local Tesseract installation.
+
+## v0.1.2
+
 - Prepared the repository for GitHub presentation with clearer project documentation, license, contribution notes, screenshot placeholders, and an engineering audit.
 
 ## v0.1.1
