@@ -1,6 +1,6 @@
 # FileMorph
 
-FileMorph is a local Streamlit app for quick file conversion workflows. It currently focuses on common image conversions and practical PDF transformations, with generated files saved to `output/` on your machine.
+FileMorph is a local Streamlit app for quick file conversion workflows. It currently focuses on common image, PDF, Office, and media transformations, with generated files saved to `output/` on your machine.
 
 ## Local-Only Privacy Note
 
@@ -16,6 +16,9 @@ FileMorph runs locally. Uploaded files are written to the local `uploads/` direc
 - Extract text from text-based PDFs into TXT.
 - Extract plain text from scanned PDFs and image files with local OCR.
 - Convert PDF to DOCX with `pdf2docx` as a first MVP implementation.
+- Convert PPTX files to PDF with local LibreOffice.
+- Extract PPTX slide text into DOCX.
+- Extract audio from video files as WAV or MP3 with local ffmpeg.
 - Clear UI feedback for uploaded files, conversion status, successful outputs, and failed files.
 
 ## Demo
@@ -60,8 +63,33 @@ python -m pytest -q
 | PDF | PNG pages | One or more PDFs | Requires Poppler to be installed locally. |
 | PDF | TXT | One or more PDFs | Works best with text-based PDFs that contain selectable text. |
 | PDF | DOCX | One or more PDFs | Uses `pdf2docx`; complex layouts may need manual cleanup. |
+| PPTX | PDF | One or more PPTX files | Requires LibreOffice to be installed locally. |
+| PPTX | DOCX | One or more PPTX files | Extracts slide text into a document format, not a visual layout clone. |
+| MP4, MOV, MKV, AVI | WAV, MP3 | One or more videos | Requires ffmpeg to be installed locally. |
 | JPG, JPEG, PNG, WEBP | TXT with OCR | Yes | Requires Tesseract to be installed locally. |
 | Scanned PDF | TXT with OCR | One or more PDFs | Converts PDF pages to images, then runs OCR locally. |
+
+## Office Conversion
+
+FileMorph can convert PPTX presentations to PDF through LibreOffice and can extract PPTX slide text into a DOCX document with `python-pptx` and `python-docx`.
+
+On macOS, install LibreOffice with:
+
+```bash
+brew install --cask libreoffice
+```
+
+PPTX to DOCX is a readable text extraction workflow. It writes slide headings, titles, body text, and speaker notes when available; it does not attempt to preserve the exact PowerPoint visual layout.
+
+## Media Conversion
+
+FileMorph can extract audio from local video files in MP4, MOV, MKV, and AVI formats. WAV is the default output, and MP3 is also available from the Streamlit UI.
+
+On macOS, install ffmpeg with:
+
+```bash
+brew install ffmpeg
+```
 
 ## OCR Text Extraction
 
@@ -117,6 +145,9 @@ For best results:
 - OCR output is plain text, not formatted DOCX.
 - PDF-to-PNG requires Poppler command-line tools in addition to Python packages.
 - PDF-to-DOCX quality depends on the source PDF layout and may not perfectly preserve columns, tables, fonts, or spacing.
+- PPTX-to-PDF requires LibreOffice.
+- PPTX-to-DOCX extracts slide text into a document format and does not preserve the exact visual slide layout.
+- Video-to-audio requires ffmpeg.
 - Uploaded source files remain in `uploads/` and generated files remain in `output/` until manually removed.
 - The app is designed for local MVP usage, not multi-user hosted deployments.
 
@@ -158,6 +189,34 @@ If Poppler is missing, FileMorph shows this message:
 
 ```text
 PDF-to-PNG requires Poppler. On macOS, install it with: brew install poppler
+```
+
+### PPTX-to-PDF requires LibreOffice
+
+PPTX-to-PDF uses LibreOffice through the `soffice` command-line tool. On macOS, install LibreOffice with:
+
+```bash
+brew install --cask libreoffice
+```
+
+If LibreOffice is missing, FileMorph shows this message:
+
+```text
+PPTX to PDF requires LibreOffice. On macOS, install it with: brew install --cask libreoffice
+```
+
+### Video-to-audio requires ffmpeg
+
+Video-to-audio uses the local `ffmpeg` command-line tool. On macOS, install ffmpeg with:
+
+```bash
+brew install ffmpeg
+```
+
+If ffmpeg is missing, FileMorph shows this message:
+
+```text
+Video to audio requires ffmpeg. On macOS, install it with: brew install ffmpeg
 ```
 
 ### OCR requires Tesseract
@@ -209,7 +268,9 @@ app/
   main.py
   converters/
     image_converter.py
+    media_converter.py
     ocr_converter.py
+    office_converter.py
     pdf_converter.py
   services/
     file_service.py

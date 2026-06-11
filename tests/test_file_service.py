@@ -6,6 +6,8 @@ from app.services.file_service import (
     get_extension,
     is_supported_image,
     is_supported_pdf,
+    is_supported_pptx,
+    is_supported_video,
     unique_output_path,
 )
 
@@ -25,6 +27,20 @@ def test_supported_image_extensions():
 def test_supported_pdf_extension():
     assert is_supported_pdf("document.pdf")
     assert not is_supported_pdf("document.txt")
+
+
+def test_supported_pptx_extension():
+    assert is_supported_pptx("slides.pptx")
+    assert is_supported_pptx("SLIDES.PPTX")
+    assert not is_supported_pptx("slides.ppt")
+
+
+def test_supported_video_extensions():
+    assert is_supported_video("clip.mp4")
+    assert is_supported_video("clip.mov")
+    assert is_supported_video("clip.mkv")
+    assert is_supported_video("clip.avi")
+    assert not is_supported_video("clip.wav")
 
 
 def test_unique_output_path_returns_original_name_when_available(tmp_path: Path):

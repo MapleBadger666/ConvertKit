@@ -11,6 +11,8 @@ UPLOAD_DIR = PROJECT_ROOT / "uploads"
 
 SUPPORTED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 SUPPORTED_PDF_EXTENSIONS = {"pdf"}
+SUPPORTED_PPTX_EXTENSIONS = {"pptx"}
+SUPPORTED_VIDEO_EXTENSIONS = {"mp4", "mov", "mkv", "avi"}
 
 
 def ensure_directory(path: Path | str) -> Path:
@@ -29,6 +31,14 @@ def is_supported_image(filename: str | Path) -> bool:
 
 def is_supported_pdf(filename: str | Path) -> bool:
     return get_extension(filename) in SUPPORTED_PDF_EXTENSIONS
+
+
+def is_supported_pptx(filename: str | Path) -> bool:
+    return get_extension(filename) in SUPPORTED_PPTX_EXTENSIONS
+
+
+def is_supported_video(filename: str | Path) -> bool:
+    return get_extension(filename) in SUPPORTED_VIDEO_EXTENSIONS
 
 
 def unique_output_path(

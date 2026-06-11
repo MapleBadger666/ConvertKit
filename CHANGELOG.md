@@ -6,6 +6,14 @@ All notable changes to ConvertKit/FileMorph will be documented in this file.
 
 - No changes yet.
 
+## v0.3.0
+
+- Added PPTX to PDF conversion through local LibreOffice.
+- Added PPTX to DOCX slide text extraction.
+- Added video-to-audio extraction with WAV and MP3 output through local ffmpeg.
+- Added upload filtering, tests, and documentation for Office and media conversions.
+- No cloud APIs were added.
+
 ## v0.2.4
 
 - Added README screenshots.

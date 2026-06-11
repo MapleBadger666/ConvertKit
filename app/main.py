@@ -10,6 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.converters.pdf_converter import images_to_pdf, pdf_to_docx, pdf_to_png, pdf_to_txt
+from app.converters.media_converter import video_to_audio
 from app.converters.ocr_converter import (
     OCR_MODE_DOCUMENT,
     OCR_MODE_SCREENSHOT,
@@ -19,12 +20,15 @@ from app.converters.ocr_converter import (
     pdf_to_text_with_ocr,
     required_ocr_languages,
 )
+from app.converters.office_converter import pptx_to_docx, pptx_to_pdf
 from app.services.file_service import (
     OUTPUT_DIR,
     create_zip_archive,
     ensure_directory,
     is_supported_image,
     is_supported_pdf,
+    is_supported_pptx,
+    is_supported_video,
     save_uploaded_files,
     unique_output_path,
 )
@@ -38,6 +42,9 @@ CONVERSION_OPTIONS = {
     "PDF pages to PNG": "pdf:png",
     "PDF to TXT": "pdf:txt",
     "PDF to DOCX": "pdf:docx",
+    "PPTX to PDF": "office:pptx_pdf",
+    "PPTX to DOCX": "office:pptx_docx",
+    "Video to Audio": "media:audio",
     "Image to TXT (OCR)": "ocr:image_txt",
     "Scanned PDF to TXT (OCR)": "ocr:pdf_txt",
 }
@@ -65,6 +72,8 @@ MIME_TYPES = {
     ".jpeg": "image/jpeg",
     ".pdf": "application/pdf",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".wav": "audio/wav",
+    ".mp3": "audio/mpeg",
     ".zip": "application/zip",
 }
 
@@ -85,6 +94,8 @@ def readable_error(exc: Exception) -> str:
 def get_allowed_upload_types(conversion_type: str) -> list[str]:
     image_types = ["jpg", "jpeg", "png", "webp"]
     pdf_types = ["pdf"]
+    pptx_types = ["pptx"]
+    video_types = ["mp4", "mov", "mkv", "avi"]
 
     if conversion_type.startswith("image:"):
         return image_types
@@ -101,7 +112,13 @@ def get_allowed_upload_types(conversion_type: str) -> list[str]:
     if conversion_type == "ocr:pdf_txt":
         return pdf_types
 
-    return [*image_types, *pdf_types]
+    if conversion_type.startswith("office:"):
+        return pptx_types
+
+    if conversion_type == "media:audio":
+        return video_types
+
+    return [*image_types, *pdf_types, *pptx_types, *video_types]
 
 
 def get_available_ocr_language_options(
@@ -127,6 +144,7 @@ def convert_file_paths(
     conversion_type: str,
     ocr_language: str = "eng",
     ocr_mode: str = OCR_MODE_STANDARD,
+    audio_format: str = "wav",
 ) -> tuple[list[Path], list[str]]:
     output_paths: list[Path] = []
     failed_files: list[str] = []
@@ -222,6 +240,39 @@ def convert_file_paths(
 
         return output_paths, failed_files
 
+    if conversion_type.startswith("office:"):
+        for file_path in file_paths:
+            if not is_supported_pptx(file_path):
+                failed_files.append(f"{file_path.name}: expected a PPTX file.")
+                continue
+
+            try:
+                if conversion_type == "office:pptx_pdf":
+                    output_paths.append(pptx_to_pdf(file_path, OUTPUT_DIR))
+                elif conversion_type == "office:pptx_docx":
+                    output_paths.append(pptx_to_docx(file_path, OUTPUT_DIR))
+                else:
+                    failed_files.append(
+                        f"{file_path.name}: unsupported Office conversion."
+                    )
+            except Exception as exc:
+                failed_files.append(f"{file_path.name}: {readable_error(exc)}")
+
+        return output_paths, failed_files
+
+    if conversion_type == "media:audio":
+        for file_path in file_paths:
+            if not is_supported_video(file_path):
+                failed_files.append(f"{file_path.name}: expected a supported video file.")
+                continue
+
+            try:
+                output_paths.append(video_to_audio(file_path, OUTPUT_DIR, audio_format))
+            except Exception as exc:
+                failed_files.append(f"{file_path.name}: {readable_error(exc)}")
+
+        return output_paths, failed_files
+
     return output_paths, [f"Unsupported conversion type: {conversion_type}"]
 
 
@@ -287,6 +338,7 @@ def main() -> None:
     conversion_type = CONVERSION_OPTIONS[selected_label]
     selected_ocr_language = "eng"
     selected_ocr_mode = OCR_MODE_STANDARD
+    selected_audio_format = "wav"
     if conversion_type.startswith("ocr:"):
         installed_ocr_languages: set[str] = set()
         try:
@@ -316,6 +368,10 @@ def main() -> None:
             index=default_ocr_mode_index(conversion_type),
         )
         selected_ocr_mode = OCR_MODE_OPTIONS[selected_ocr_mode_label]
+
+    if conversion_type == "media:audio":
+        selected_audio_format_label = st.selectbox("Audio format", ["WAV", "MP3"])
+        selected_audio_format = selected_audio_format_label.lower()
 
     uploaded_files = st.file_uploader(
         "Upload files",
@@ -349,6 +405,7 @@ def main() -> None:
                 conversion_type,
                 selected_ocr_language,
                 selected_ocr_mode,
+                selected_audio_format,
             )
 
         if output_paths:

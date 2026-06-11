@@ -24,6 +24,8 @@ def test_mime_type_for_known_output_files():
         mime_type_for_file(Path("result.docx"))
         == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
+    assert mime_type_for_file(Path("result.wav")) == "audio/wav"
+    assert mime_type_for_file(Path("result.mp3")) == "audio/mpeg"
     assert mime_type_for_file(Path("result.zip")) == "application/zip"
 
 
@@ -70,8 +72,28 @@ def test_get_allowed_upload_types_for_pdf_conversions():
     assert get_allowed_upload_types("ocr:pdf_txt") == ["pdf"]
 
 
+def test_get_allowed_upload_types_for_pptx_conversions():
+    assert get_allowed_upload_types("office:pptx_pdf") == ["pptx"]
+    assert get_allowed_upload_types("office:pptx_docx") == ["pptx"]
+
+
+def test_get_allowed_upload_types_for_video_to_audio():
+    assert get_allowed_upload_types("media:audio") == ["mp4", "mov", "mkv", "avi"]
+
+
 def test_get_allowed_upload_types_falls_back_to_all_supported_types():
-    assert get_allowed_upload_types("unknown") == ["jpg", "jpeg", "png", "webp", "pdf"]
+    assert get_allowed_upload_types("unknown") == [
+        "jpg",
+        "jpeg",
+        "png",
+        "webp",
+        "pdf",
+        "pptx",
+        "mp4",
+        "mov",
+        "mkv",
+        "avi",
+    ]
 
 
 def test_get_available_ocr_language_options_filters_missing_languages():
