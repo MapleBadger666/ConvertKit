@@ -6,6 +6,15 @@ All notable changes to ConvertKit/FileMorph will be documented in this file.
 
 - No changes yet.
 
+## v0.2.3
+
+- Added Pillow-only OCR preprocessing for enhanced screenshot and scanned document modes.
+- Added OCR mode selection in Streamlit.
+- Rendered PDF OCR pages at 300 DPI.
+- Added low-quality OCR result warnings.
+- Documented OCR quality tips.
+- Added tests for OCR preprocessing, mode helpers, and low-quality warning helpers.
+
 ## v0.2.2
 
 - Added conversion-specific upload file type filtering in Streamlit.

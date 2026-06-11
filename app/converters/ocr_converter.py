@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 from shutil import which
 
-from PIL import Image
+from PIL import Image, ImageEnhance
 
 from app.converters.pdf_converter import POPPLER_ERROR_MESSAGE, ensure_poppler_available
 from app.services.file_service import (
@@ -20,6 +20,10 @@ TESSERACT_ERROR_MESSAGE = (
     "OCR requires Tesseract. On macOS, install it with: brew install tesseract"
 )
 OCR_LANGUAGE_ERROR_PREFIX = "OCR language data is not installed for"
+OCR_MODE_STANDARD = "standard"
+OCR_MODE_SCREENSHOT = "screenshot"
+OCR_MODE_DOCUMENT = "document"
+OCR_MODES = {OCR_MODE_STANDARD, OCR_MODE_SCREENSHOT, OCR_MODE_DOCUMENT}
 
 
 def ensure_tesseract_available() -> None:
@@ -86,6 +90,60 @@ def ocr_output_path(
     return unique_output_path(input_path, "txt", output_dir)
 
 
+def normalize_ocr_mode(mode: str) -> str:
+    normalized = mode.lower().strip()
+    if normalized not in OCR_MODES:
+        raise ValueError(f"Unsupported OCR mode: {mode}")
+
+    return normalized
+
+
+def preprocess_image_for_ocr(
+    image: Image.Image,
+    scale_factor: int = 2,
+    contrast_factor: float = 1.6,
+    threshold: int | None = None,
+) -> Image.Image:
+    processed = image.convert("L")
+
+    if scale_factor > 1:
+        width, height = processed.size
+        processed = processed.resize(
+            (width * scale_factor, height * scale_factor),
+            Image.Resampling.LANCZOS,
+        )
+
+    if contrast_factor != 1:
+        processed = ImageEnhance.Contrast(processed).enhance(contrast_factor)
+
+    if threshold is not None:
+        processed = processed.point(lambda pixel: 255 if pixel > threshold else 0)
+
+    return processed
+
+
+def prepare_image_for_ocr_mode(image: Image.Image, mode: str) -> Image.Image:
+    normalized = normalize_ocr_mode(mode)
+
+    if normalized == OCR_MODE_STANDARD:
+        return image.copy()
+
+    if normalized == OCR_MODE_SCREENSHOT:
+        return preprocess_image_for_ocr(
+            image,
+            scale_factor=3,
+            contrast_factor=1.8,
+            threshold=None,
+        )
+
+    return preprocess_image_for_ocr(
+        image,
+        scale_factor=2,
+        contrast_factor=2.0,
+        threshold=180,
+    )
+
+
 def _image_to_text(image: Image.Image, language: str) -> str:
     try:
         import pytesseract
@@ -99,7 +157,11 @@ def _image_to_text(image: Image.Image, language: str) -> str:
         raise RuntimeError(TESSERACT_ERROR_MESSAGE) from exc
 
 
-def image_to_text(input_path: Path, language: str = "eng") -> str:
+def image_to_text(
+    input_path: Path,
+    language: str = "eng",
+    mode: str = OCR_MODE_STANDARD,
+) -> str:
     source = Path(input_path)
     if not is_supported_image(source):
         raise ValueError(f"Unsupported image format for OCR: {source.name}")
@@ -107,13 +169,15 @@ def image_to_text(input_path: Path, language: str = "eng") -> str:
     ensure_tesseract_available()
     validate_ocr_language_available(language)
     with Image.open(source) as image:
-        return _image_to_text(image, language)
+        prepared = prepare_image_for_ocr_mode(image, mode)
+        return _image_to_text(prepared, language)
 
 
 def pdf_to_text_with_ocr(
     input_path: Path,
     output_dir: Path,
     language: str = "eng",
+    mode: str = OCR_MODE_STANDARD,
 ) -> Path:
     source = Path(input_path)
     if not is_supported_pdf(source):
@@ -121,6 +185,7 @@ def pdf_to_text_with_ocr(
 
     ensure_tesseract_available()
     validate_ocr_language_available(language)
+    normalized_mode = normalize_ocr_mode(mode)
     try:
         ensure_poppler_available()
     except RuntimeError as exc:
@@ -135,7 +200,7 @@ def pdf_to_text_with_ocr(
         raise RuntimeError("pdf2image is required for PDF OCR conversion.") from exc
 
     try:
-        pages = convert_from_path(source)
+        pages = convert_from_path(source, dpi=300)
     except PDFInfoNotInstalledError as exc:
         raise RuntimeError(POPPLER_ERROR_MESSAGE) from exc
 
@@ -144,7 +209,8 @@ def pdf_to_text_with_ocr(
     chunks: list[str] = []
 
     for index, page in enumerate(pages, start=1):
-        text = _image_to_text(page, language).strip()
+        prepared = prepare_image_for_ocr_mode(page, normalized_mode)
+        text = _image_to_text(prepared, language).strip()
         chunks.append(f"--- Page {index} ---\n{text}")
 
     output_path.write_text("\n\n".join(chunks), encoding="utf-8")

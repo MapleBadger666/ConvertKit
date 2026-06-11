@@ -78,6 +78,22 @@ Check installed OCR languages with:
 tesseract --list-langs
 ```
 
+### OCR Quality Tips
+
+OCR works best with clear, high-resolution images and strong contrast. FileMorph includes three OCR modes:
+
+- Standard OCR: sends the image to Tesseract with minimal preprocessing.
+- Enhanced OCR for screenshots: upscales and increases contrast for screenshots, UI captures, and mixed text/code images.
+- Enhanced OCR for scanned documents: upscales, increases contrast, and binarizes pages for document-style scans.
+
+For best results:
+
+- Use high-resolution images when possible.
+- Avoid dark backgrounds when possible.
+- Use English OCR for English text instead of mixed-language OCR unless the image really contains multiple languages.
+- Install `tesseract-lang` for Chinese OCR.
+- Expect screenshots with code, UI chrome, dense layouts, or dark themes to be imperfect.
+
 ## Screenshots
 
 Screenshots should be added later under `docs/screenshots/`. Do not commit real user files or sensitive document previews. A placeholder `.gitkeep` file keeps the folder available in git.
@@ -92,6 +108,7 @@ Suggested future screenshots:
 
 - OCR quality depends on scan clarity, resolution, contrast, orientation, and installed language data.
 - Handwriting may be inaccurate or unreadable.
+- Screenshots with code, UI elements, dark backgrounds, or mixed fonts may be imperfect.
 - Complex tables, columns, and visual layouts are not preserved in OCR TXT output.
 - OCR output is plain text, not formatted DOCX.
 - PDF-to-PNG requires Poppler command-line tools in addition to Python packages.

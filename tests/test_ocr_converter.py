@@ -3,14 +3,21 @@ from pathlib import Path
 from app.converters import ocr_converter
 from app.converters.ocr_converter import (
     OCR_LANGUAGE_ERROR_PREFIX,
+    OCR_MODE_DOCUMENT,
+    OCR_MODE_SCREENSHOT,
+    OCR_MODE_STANDARD,
     TESSERACT_ERROR_MESSAGE,
     ensure_tesseract_available,
     image_to_text,
+    normalize_ocr_mode,
     ocr_output_path,
     parse_tesseract_languages,
+    prepare_image_for_ocr_mode,
+    preprocess_image_for_ocr,
     required_ocr_languages,
     validate_ocr_language_available,
 )
+from PIL import Image
 
 
 def test_ensure_tesseract_available_raises_clear_error_when_missing(monkeypatch):
@@ -86,3 +93,50 @@ def test_validate_ocr_language_available_raises_readable_error_for_missing_langu
         assert "tesseract --list-langs" in str(exc)
     else:
         raise AssertionError("Expected missing OCR language to raise RuntimeError")
+
+
+def test_preprocess_image_for_ocr_returns_processed_image():
+    image = Image.new("RGB", (8, 10), (120, 120, 120))
+
+    processed = preprocess_image_for_ocr(
+        image,
+        scale_factor=2,
+        contrast_factor=1.5,
+        threshold=128,
+    )
+
+    assert isinstance(processed, Image.Image)
+    assert processed.mode == "L"
+    assert processed.size == (16, 20)
+
+
+def test_prepare_image_for_ocr_mode_keeps_standard_copy():
+    image = Image.new("RGB", (8, 10), (120, 120, 120))
+
+    processed = prepare_image_for_ocr_mode(image, OCR_MODE_STANDARD)
+
+    assert isinstance(processed, Image.Image)
+    assert processed.mode == "RGB"
+    assert processed.size == image.size
+    assert processed is not image
+
+
+def test_prepare_image_for_ocr_mode_enhances_screenshot_and_document_modes():
+    image = Image.new("RGB", (8, 10), (120, 120, 120))
+
+    screenshot = prepare_image_for_ocr_mode(image, OCR_MODE_SCREENSHOT)
+    document = prepare_image_for_ocr_mode(image, OCR_MODE_DOCUMENT)
+
+    assert screenshot.mode == "L"
+    assert screenshot.size == (24, 30)
+    assert document.mode == "L"
+    assert document.size == (16, 20)
+
+
+def test_normalize_ocr_mode_rejects_unknown_mode():
+    try:
+        normalize_ocr_mode("magic")
+    except ValueError as exc:
+        assert "Unsupported OCR mode" in str(exc)
+    else:
+        raise AssertionError("Expected unknown OCR mode to raise ValueError")

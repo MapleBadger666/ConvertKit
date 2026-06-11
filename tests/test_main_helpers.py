@@ -2,10 +2,14 @@ from pathlib import Path
 
 from app.main import (
     EMPTY_TXT_PREVIEW_MESSAGE,
+    OCR_MODE_OPTIONS,
     download_label_for_file,
+    default_ocr_mode_index,
     get_allowed_upload_types,
     get_available_ocr_language_options,
+    is_low_quality_ocr_text,
     mime_type_for_file,
+    should_show_ocr_quality_warning,
     txt_preview_for_file,
 )
 
@@ -78,3 +82,38 @@ def test_get_available_ocr_language_options_filters_missing_languages():
         "Simplified Chinese": "chi_sim",
         "English + Simplified Chinese": "eng+chi_sim",
     }
+
+
+def test_default_ocr_mode_prefers_screenshot_for_image_ocr():
+    labels = list(OCR_MODE_OPTIONS)
+
+    assert labels[default_ocr_mode_index("ocr:image_txt")] == (
+        "Enhanced OCR for screenshots"
+    )
+
+
+def test_default_ocr_mode_prefers_document_for_pdf_ocr():
+    labels = list(OCR_MODE_OPTIONS)
+
+    assert labels[default_ocr_mode_index("ocr:pdf_txt")] == (
+        "Enhanced OCR for scanned documents"
+    )
+
+
+def test_is_low_quality_ocr_text_detects_short_or_whitespace_text():
+    assert is_low_quality_ocr_text("   \n")
+    assert is_low_quality_ocr_text("short")
+    assert not is_low_quality_ocr_text("This OCR result has enough readable text.")
+
+
+def test_should_show_ocr_quality_warning_only_for_low_quality_txt(tmp_path: Path):
+    low_quality = tmp_path / "low.txt"
+    high_quality = tmp_path / "high.txt"
+    image_output = tmp_path / "image.png"
+    low_quality.write_text("  ", encoding="utf-8")
+    high_quality.write_text("This OCR result has enough readable text.", encoding="utf-8")
+    image_output.write_text("not a txt output", encoding="utf-8")
+
+    assert should_show_ocr_quality_warning(low_quality)
+    assert not should_show_ocr_quality_warning(high_quality)
+    assert not should_show_ocr_quality_warning(image_output)

@@ -11,6 +11,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.converters.pdf_converter import images_to_pdf, pdf_to_docx, pdf_to_png, pdf_to_txt
 from app.converters.ocr_converter import (
+    OCR_MODE_DOCUMENT,
+    OCR_MODE_SCREENSHOT,
+    OCR_MODE_STANDARD,
     get_installed_tesseract_languages,
     image_to_text,
     pdf_to_text_with_ocr,
@@ -45,6 +48,11 @@ OCR_LANGUAGE_OPTIONS = {
     "Traditional Chinese": "chi_tra",
     "English + Simplified Chinese": "eng+chi_sim",
 }
+OCR_MODE_OPTIONS = {
+    "Standard OCR": OCR_MODE_STANDARD,
+    "Enhanced OCR for screenshots": OCR_MODE_SCREENSHOT,
+    "Enhanced OCR for scanned documents": OCR_MODE_DOCUMENT,
+}
 CHINESE_OCR_LANGUAGE_WARNING = (
     "Chinese OCR language packs are not installed. "
     "On macOS, run: brew install tesseract-lang"
@@ -62,6 +70,10 @@ MIME_TYPES = {
 
 EMPTY_TXT_PREVIEW_MESSAGE = (
     "The TXT file was generated, but no readable text was found."
+)
+OCR_LOW_QUALITY_WARNING = (
+    "OCR completed, but the result may be low quality. Try a clearer image, "
+    "higher resolution, or a different OCR mode."
 )
 
 
@@ -102,10 +114,19 @@ def get_available_ocr_language_options(
     }
 
 
+def default_ocr_mode_index(conversion_type: str) -> int:
+    labels = list(OCR_MODE_OPTIONS)
+    if conversion_type == "ocr:pdf_txt":
+        return labels.index("Enhanced OCR for scanned documents")
+
+    return labels.index("Enhanced OCR for screenshots")
+
+
 def convert_file_paths(
     file_paths: list[Path],
     conversion_type: str,
     ocr_language: str = "eng",
+    ocr_mode: str = OCR_MODE_STANDARD,
 ) -> tuple[list[Path], list[str]]:
     output_paths: list[Path] = []
     failed_files: list[str] = []
@@ -152,7 +173,7 @@ def convert_file_paths(
                 continue
 
             try:
-                text = image_to_text(file_path, ocr_language)
+                text = image_to_text(file_path, ocr_language, ocr_mode)
                 output_path = unique_output_path(file_path, "txt", OUTPUT_DIR)
                 output_path.write_text(text, encoding="utf-8")
                 output_paths.append(output_path)
@@ -169,7 +190,12 @@ def convert_file_paths(
 
             try:
                 output_paths.append(
-                    pdf_to_text_with_ocr(file_path, OUTPUT_DIR, ocr_language)
+                    pdf_to_text_with_ocr(
+                        file_path,
+                        OUTPUT_DIR,
+                        ocr_language,
+                        ocr_mode,
+                    )
                 )
             except Exception as exc:
                 failed_files.append(f"{file_path.name}: {readable_error(exc)}")
@@ -218,6 +244,17 @@ def txt_preview_for_file(file_path: Path, character_limit: int = 1000) -> str:
     return preview
 
 
+def is_low_quality_ocr_text(text: str, minimum_characters: int = 20) -> bool:
+    return len(text.strip()) < minimum_characters
+
+
+def should_show_ocr_quality_warning(file_path: Path) -> bool:
+    if file_path.suffix.lower() != ".txt":
+        return False
+
+    return is_low_quality_ocr_text(file_path.read_text(encoding="utf-8", errors="replace"))
+
+
 def show_download_button(file_path: Path, label: str) -> None:
     st.download_button(
         label,
@@ -249,6 +286,7 @@ def main() -> None:
     selected_label = st.selectbox("Conversion type", list(CONVERSION_OPTIONS))
     conversion_type = CONVERSION_OPTIONS[selected_label]
     selected_ocr_language = "eng"
+    selected_ocr_mode = OCR_MODE_STANDARD
     if conversion_type.startswith("ocr:"):
         installed_ocr_languages: set[str] = set()
         try:
@@ -271,6 +309,13 @@ def main() -> None:
         selected_ocr_language = available_ocr_options[selected_ocr_language_label]
         if not {"chi_sim", "chi_tra"}.issubset(installed_ocr_languages):
             st.warning(CHINESE_OCR_LANGUAGE_WARNING)
+
+        selected_ocr_mode_label = st.selectbox(
+            "OCR mode",
+            list(OCR_MODE_OPTIONS),
+            index=default_ocr_mode_index(conversion_type),
+        )
+        selected_ocr_mode = OCR_MODE_OPTIONS[selected_ocr_mode_label]
 
     uploaded_files = st.file_uploader(
         "Upload files",
@@ -303,6 +348,7 @@ def main() -> None:
                 saved_files,
                 conversion_type,
                 selected_ocr_language,
+                selected_ocr_mode,
             )
 
         if output_paths:
@@ -331,6 +377,10 @@ def main() -> None:
         for output_path in output_paths:
             st.code(str(output_path))
             show_txt_preview(output_path)
+            if conversion_type.startswith("ocr:") and should_show_ocr_quality_warning(
+                output_path
+            ):
+                st.warning(OCR_LOW_QUALITY_WARNING)
 
         if len(output_paths) == 1:
             show_download_button(
