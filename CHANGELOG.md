@@ -6,6 +6,12 @@ All notable changes to ConvertKit/FileMorph will be documented in this file.
 
 - No changes yet.
 
+## v0.4.2
+
+- Trimmed README for a cleaner GitHub landing page.
+- Removed old screenshot references from README.
+- Cleaned GitHub presentation around v0.4 UI previews.
+
 ## v0.4.1
 
 - Added updated v0.4 UI screenshots to README.
