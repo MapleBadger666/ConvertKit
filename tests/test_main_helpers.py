@@ -5,7 +5,9 @@ from app.main import (
     OCR_MODE_OPTIONS,
     PPTX_DOCX_MODE_OPTIONS,
     TRANSCRIPTION_LANGUAGE_OPTIONS,
+    TRANSCRIPTION_MODEL_GUIDANCE,
     TRANSCRIPTION_MODEL_OPTIONS,
+    TRANSCRIPTION_AUDIO_GUIDANCE,
     download_label_for_file,
     default_ocr_mode_index,
     get_allowed_upload_types,
@@ -14,6 +16,8 @@ from app.main import (
     is_low_quality_ocr_text,
     mime_type_for_file,
     should_show_ocr_quality_warning,
+    transcription_language_guidance,
+    transcription_post_conversion_messages,
     txt_preview_for_file,
 )
 
@@ -167,6 +171,29 @@ def test_transcription_options_default_to_base_and_map_languages():
     assert get_transcription_language_code("Auto-detect") is None
     assert get_transcription_language_code("English") == "en"
     assert get_transcription_language_code("Simplified Chinese") == "zh"
+    assert "base = balanced" in TRANSCRIPTION_MODEL_GUIDANCE
+    assert "Background noise" in TRANSCRIPTION_AUDIO_GUIDANCE
+
+
+def test_transcription_language_guidance_matches_language_choice():
+    assert "English transcription" in transcription_language_guidance("English")
+    assert "Chinese speech" in transcription_language_guidance("Simplified Chinese")
+    assert "choose the spoken language manually" in transcription_language_guidance(
+        "Auto-detect"
+    )
+
+
+def test_transcription_post_conversion_messages_match_quality_choices():
+    assert transcription_post_conversion_messages("tiny", "Auto-detect") == [
+        "For better accuracy, try base or small.",
+        "If the transcript looks wrong, choose the spoken language manually.",
+    ]
+    assert transcription_post_conversion_messages("base", "Simplified Chinese") == [
+        "Chinese transcription works best with clear Mandarin audio and small model."
+    ]
+    assert transcription_post_conversion_messages("small", "English") == [
+        "English transcription improves with clear speech, low background noise, and base/small model."
+    ]
 
 
 def test_is_low_quality_ocr_text_detects_short_or_whitespace_text():

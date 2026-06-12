@@ -105,6 +105,12 @@ OCR_LOW_QUALITY_WARNING = (
     "OCR completed, but the result may be low quality. Try a clearer image, "
     "higher resolution, or a different OCR mode."
 )
+TRANSCRIPTION_MODEL_GUIDANCE = (
+    "tiny = fastest rough draft, base = balanced, small = better accuracy and slower."
+)
+TRANSCRIPTION_AUDIO_GUIDANCE = (
+    "Use short, clear audio when possible. Background noise and low volume can reduce accuracy."
+)
 
 
 def readable_error(exc: Exception) -> str:
@@ -169,6 +175,38 @@ def default_ocr_mode_index(conversion_type: str) -> int:
 
 def get_transcription_language_code(label: str) -> str | None:
     return TRANSCRIPTION_LANGUAGE_OPTIONS[label]
+
+
+def transcription_language_guidance(label: str) -> str:
+    if label == "English":
+        return "For clearer English transcription, use base or small. tiny is fastest but less accurate."
+
+    if label == "Simplified Chinese":
+        return "For Chinese speech, choose Simplified Chinese instead of Auto-detect for better results."
+
+    return "If the transcript looks wrong, choose the spoken language manually."
+
+
+def transcription_post_conversion_messages(
+    model_size: str,
+    language_label: str,
+) -> list[str]:
+    messages: list[str] = []
+    if model_size == "tiny":
+        messages.append("For better accuracy, try base or small.")
+
+    if language_label == "Auto-detect":
+        messages.append("If the transcript looks wrong, choose the spoken language manually.")
+    elif language_label == "Simplified Chinese":
+        messages.append(
+            "Chinese transcription works best with clear Mandarin audio and small model."
+        )
+    elif language_label == "English":
+        messages.append(
+            "English transcription improves with clear speech, low background noise, and base/small model."
+        )
+
+    return messages
 
 
 def convert_file_paths(
@@ -419,6 +457,7 @@ def main() -> None:
     selected_pptx_docx_mode = PPTX_DOCX_MODE_TEXT_OUTLINE
     selected_transcription_model_size = "base"
     selected_transcription_language = None
+    selected_transcription_language_label = "Auto-detect"
     if conversion_type.startswith("ocr:"):
         installed_ocr_languages: set[str] = set()
         try:
@@ -466,6 +505,7 @@ def main() -> None:
             TRANSCRIPTION_MODEL_OPTIONS,
             index=TRANSCRIPTION_MODEL_OPTIONS.index("base"),
         )
+        st.caption(TRANSCRIPTION_MODEL_GUIDANCE)
         selected_transcription_language_label = st.selectbox(
             "Transcription language",
             list(TRANSCRIPTION_LANGUAGE_OPTIONS),
@@ -473,6 +513,8 @@ def main() -> None:
         selected_transcription_language = get_transcription_language_code(
             selected_transcription_language_label
         )
+        st.info(transcription_language_guidance(selected_transcription_language_label))
+        st.caption(TRANSCRIPTION_AUDIO_GUIDANCE)
 
     uploaded_files = st.file_uploader(
         "Upload files",
@@ -526,6 +568,13 @@ def main() -> None:
 
         if not output_paths:
             return
+
+        if conversion_type.startswith("transcription:"):
+            for message in transcription_post_conversion_messages(
+                selected_transcription_model_size,
+                selected_transcription_language_label,
+            ):
+                st.info(message)
 
         zip_path = None
         if len(output_paths) > 1:

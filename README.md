@@ -102,7 +102,7 @@ brew install ffmpeg
 
 ## Audio and Video Transcription
 
-FileMorph can transcribe local audio files and video files to timestamped `.txt` output with `faster-whisper`. Video transcription first extracts WAV audio locally with ffmpeg, then transcribes the extracted audio.
+FileMorph can transcribe local audio files and video files to timestamped `.txt` output with `faster-whisper`. Audio is normalized locally to mono 16 kHz WAV before transcription. Video transcription first extracts WAV audio locally with ffmpeg, then normalizes and transcribes the extracted audio.
 
 Transcription stays local after the model is available. The first run for a selected Whisper model may download model files to your local machine.
 
@@ -117,6 +117,21 @@ Language options:
 - Auto-detect: lets faster-whisper detect the language.
 - English: uses `en`.
 - Simplified Chinese: uses `zh`.
+
+### Transcription Quality Tips
+
+For better transcription results:
+
+- Use `small` for better accuracy when speed is less important.
+- Use `base` for balanced speed and quality.
+- Use `tiny` only for quick rough drafts.
+- Select English for English audio.
+- Select Simplified Chinese for Chinese audio.
+- Avoid Auto-detect for very short clips when possible.
+- Use clear speech with low background noise.
+- Avoid very quiet, distant, clipped, or music-heavy audio when possible.
+
+Chinese transcription works better when Simplified Chinese is selected manually, especially for short clips. The first real transcription for a selected model may download model files locally.
 
 ## OCR Text Extraction
 
@@ -280,6 +295,12 @@ If faster-whisper is missing, FileMorph shows this message:
 
 ```text
 Audio transcription requires faster-whisper. Install dependencies with: python -m pip install -r requirements.txt
+```
+
+If ffmpeg cannot prepare audio for transcription, FileMorph shows this message:
+
+```text
+Audio preprocessing failed. Make sure ffmpeg is installed and the file has a valid audio track.
 ```
 
 ### OCR requires Tesseract

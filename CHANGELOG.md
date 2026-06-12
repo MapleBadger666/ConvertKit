@@ -6,6 +6,14 @@ All notable changes to ConvertKit/FileMorph will be documented in this file.
 
 - No changes yet.
 
+## v0.3.3
+
+- Added local audio normalization before faster-whisper transcription.
+- Added transcription TXT headers with file, conversion, model, language, and quality notes.
+- Added transcription guidance and post-conversion advice for model and language choices.
+- Improved readable errors for audio preprocessing failures.
+- Documented transcription quality tips for English, Chinese, noisy audio, and short clips.
+
 ## v0.3.2
 
 - Added local Audio to TXT transcription with faster-whisper.
