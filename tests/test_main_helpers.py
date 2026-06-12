@@ -4,9 +4,12 @@ from app.main import (
     EMPTY_TXT_PREVIEW_MESSAGE,
     OCR_MODE_OPTIONS,
     PPTX_DOCX_MODE_OPTIONS,
+    TRANSCRIPTION_LANGUAGE_OPTIONS,
+    TRANSCRIPTION_MODEL_OPTIONS,
     download_label_for_file,
     default_ocr_mode_index,
     get_allowed_upload_types,
+    get_transcription_language_code,
     get_available_ocr_language_options,
     is_low_quality_ocr_text,
     mime_type_for_file,
@@ -82,6 +85,22 @@ def test_get_allowed_upload_types_for_video_to_audio():
     assert get_allowed_upload_types("media:audio") == ["mp4", "mov", "mkv", "avi"]
 
 
+def test_get_allowed_upload_types_for_transcription_conversions():
+    assert get_allowed_upload_types("transcription:audio_txt") == [
+        "mp3",
+        "wav",
+        "m4a",
+        "aac",
+        "flac",
+    ]
+    assert get_allowed_upload_types("transcription:video_txt") == [
+        "mp4",
+        "mov",
+        "mkv",
+        "avi",
+    ]
+
+
 def test_get_allowed_upload_types_falls_back_to_all_supported_types():
     assert get_allowed_upload_types("unknown") == [
         "jpg",
@@ -94,6 +113,11 @@ def test_get_allowed_upload_types_falls_back_to_all_supported_types():
         "mov",
         "mkv",
         "avi",
+        "mp3",
+        "wav",
+        "m4a",
+        "aac",
+        "flac",
     ]
 
 
@@ -130,6 +154,19 @@ def test_pptx_docx_mode_options_default_to_text_outline():
         "Slide Images + Extracted Text",
     ]
     assert PPTX_DOCX_MODE_OPTIONS["Text Outline"] == "text_outline"
+
+
+def test_transcription_options_default_to_base_and_map_languages():
+    assert TRANSCRIPTION_MODEL_OPTIONS == ["tiny", "base", "small"]
+    assert TRANSCRIPTION_MODEL_OPTIONS.index("base") == 1
+    assert TRANSCRIPTION_LANGUAGE_OPTIONS == {
+        "Auto-detect": None,
+        "English": "en",
+        "Simplified Chinese": "zh",
+    }
+    assert get_transcription_language_code("Auto-detect") is None
+    assert get_transcription_language_code("English") == "en"
+    assert get_transcription_language_code("Simplified Chinese") == "zh"
 
 
 def test_is_low_quality_ocr_text_detects_short_or_whitespace_text():

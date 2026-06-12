@@ -27,10 +27,12 @@ from app.converters.office_converter import (
     pptx_to_docx,
     pptx_to_pdf,
 )
+from app.converters.transcription_converter import audio_to_txt, video_to_txt
 from app.services.file_service import (
     OUTPUT_DIR,
     create_zip_archive,
     ensure_directory,
+    is_supported_audio,
     is_supported_image,
     is_supported_pdf,
     is_supported_pptx,
@@ -51,6 +53,8 @@ CONVERSION_OPTIONS = {
     "PPTX to PDF": "office:pptx_pdf",
     "PPTX to DOCX": "office:pptx_docx",
     "Video to Audio": "media:audio",
+    "Audio to TXT": "transcription:audio_txt",
+    "Video to TXT": "transcription:video_txt",
     "Image to TXT (OCR)": "ocr:image_txt",
     "Scanned PDF to TXT (OCR)": "ocr:pdf_txt",
 }
@@ -70,6 +74,12 @@ PPTX_DOCX_MODE_OPTIONS = {
     "Text Outline": PPTX_DOCX_MODE_TEXT_OUTLINE,
     "Slide Images": PPTX_DOCX_MODE_SLIDE_IMAGES,
     "Slide Images + Extracted Text": PPTX_DOCX_MODE_SLIDE_IMAGES_WITH_TEXT,
+}
+TRANSCRIPTION_MODEL_OPTIONS = ["tiny", "base", "small"]
+TRANSCRIPTION_LANGUAGE_OPTIONS = {
+    "Auto-detect": None,
+    "English": "en",
+    "Simplified Chinese": "zh",
 }
 CHINESE_OCR_LANGUAGE_WARNING = (
     "Chinese OCR language packs are not installed. "
@@ -107,6 +117,7 @@ def get_allowed_upload_types(conversion_type: str) -> list[str]:
     pdf_types = ["pdf"]
     pptx_types = ["pptx"]
     video_types = ["mp4", "mov", "mkv", "avi"]
+    audio_types = ["mp3", "wav", "m4a", "aac", "flac"]
 
     if conversion_type.startswith("image:"):
         return image_types
@@ -129,7 +140,13 @@ def get_allowed_upload_types(conversion_type: str) -> list[str]:
     if conversion_type == "media:audio":
         return video_types
 
-    return [*image_types, *pdf_types, *pptx_types, *video_types]
+    if conversion_type == "transcription:audio_txt":
+        return audio_types
+
+    if conversion_type == "transcription:video_txt":
+        return video_types
+
+    return [*image_types, *pdf_types, *pptx_types, *video_types, *audio_types]
 
 
 def get_available_ocr_language_options(
@@ -150,6 +167,10 @@ def default_ocr_mode_index(conversion_type: str) -> int:
     return labels.index("Enhanced OCR for screenshots")
 
 
+def get_transcription_language_code(label: str) -> str | None:
+    return TRANSCRIPTION_LANGUAGE_OPTIONS[label]
+
+
 def convert_file_paths(
     file_paths: list[Path],
     conversion_type: str,
@@ -157,6 +178,8 @@ def convert_file_paths(
     ocr_mode: str = OCR_MODE_STANDARD,
     audio_format: str = "wav",
     pptx_docx_mode: str = PPTX_DOCX_MODE_TEXT_OUTLINE,
+    transcription_model_size: str = "base",
+    transcription_language: str | None = None,
 ) -> tuple[list[Path], list[str]]:
     output_paths: list[Path] = []
     failed_files: list[str] = []
@@ -287,6 +310,46 @@ def convert_file_paths(
 
         return output_paths, failed_files
 
+    if conversion_type == "transcription:audio_txt":
+        for file_path in file_paths:
+            if not is_supported_audio(file_path):
+                failed_files.append(f"{file_path.name}: expected a supported audio file.")
+                continue
+
+            try:
+                output_paths.append(
+                    audio_to_txt(
+                        file_path,
+                        OUTPUT_DIR,
+                        transcription_model_size,
+                        transcription_language,
+                    )
+                )
+            except Exception as exc:
+                failed_files.append(f"{file_path.name}: {readable_error(exc)}")
+
+        return output_paths, failed_files
+
+    if conversion_type == "transcription:video_txt":
+        for file_path in file_paths:
+            if not is_supported_video(file_path):
+                failed_files.append(f"{file_path.name}: expected a supported video file.")
+                continue
+
+            try:
+                output_paths.append(
+                    video_to_txt(
+                        file_path,
+                        OUTPUT_DIR,
+                        transcription_model_size,
+                        transcription_language,
+                    )
+                )
+            except Exception as exc:
+                failed_files.append(f"{file_path.name}: {readable_error(exc)}")
+
+        return output_paths, failed_files
+
     return output_paths, [f"Unsupported conversion type: {conversion_type}"]
 
 
@@ -354,6 +417,8 @@ def main() -> None:
     selected_ocr_mode = OCR_MODE_STANDARD
     selected_audio_format = "wav"
     selected_pptx_docx_mode = PPTX_DOCX_MODE_TEXT_OUTLINE
+    selected_transcription_model_size = "base"
+    selected_transcription_language = None
     if conversion_type.startswith("ocr:"):
         installed_ocr_languages: set[str] = set()
         try:
@@ -395,6 +460,20 @@ def main() -> None:
         )
         selected_pptx_docx_mode = PPTX_DOCX_MODE_OPTIONS[selected_pptx_docx_mode_label]
 
+    if conversion_type.startswith("transcription:"):
+        selected_transcription_model_size = st.selectbox(
+            "Transcription model",
+            TRANSCRIPTION_MODEL_OPTIONS,
+            index=TRANSCRIPTION_MODEL_OPTIONS.index("base"),
+        )
+        selected_transcription_language_label = st.selectbox(
+            "Transcription language",
+            list(TRANSCRIPTION_LANGUAGE_OPTIONS),
+        )
+        selected_transcription_language = get_transcription_language_code(
+            selected_transcription_language_label
+        )
+
     uploaded_files = st.file_uploader(
         "Upload files",
         accept_multiple_files=True,
@@ -429,6 +508,8 @@ def main() -> None:
                 selected_ocr_mode,
                 selected_audio_format,
                 selected_pptx_docx_mode,
+                selected_transcription_model_size,
+                selected_transcription_language,
             )
 
         if output_paths:

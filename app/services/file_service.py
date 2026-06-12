@@ -13,6 +13,7 @@ SUPPORTED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 SUPPORTED_PDF_EXTENSIONS = {"pdf"}
 SUPPORTED_PPTX_EXTENSIONS = {"pptx"}
 SUPPORTED_VIDEO_EXTENSIONS = {"mp4", "mov", "mkv", "avi"}
+SUPPORTED_AUDIO_EXTENSIONS = {"mp3", "wav", "m4a", "aac", "flac"}
 
 
 def ensure_directory(path: Path | str) -> Path:
@@ -39,6 +40,10 @@ def is_supported_pptx(filename: str | Path) -> bool:
 
 def is_supported_video(filename: str | Path) -> bool:
     return get_extension(filename) in SUPPORTED_VIDEO_EXTENSIONS
+
+
+def is_supported_audio(filename: str | Path) -> bool:
+    return get_extension(filename) in SUPPORTED_AUDIO_EXTENSIONS
 
 
 def unique_output_path(

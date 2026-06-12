@@ -6,6 +6,14 @@ All notable changes to ConvertKit/FileMorph will be documented in this file.
 
 - No changes yet.
 
+## v0.3.2
+
+- Added local Audio to TXT transcription with faster-whisper.
+- Added local Video to TXT transcription by extracting WAV audio with ffmpeg before transcription.
+- Added transcription model and language selectors in Streamlit.
+- Added timestamped transcription TXT output with preview and download support.
+- Documented local transcription setup, model tradeoffs, and limitations.
+
 ## v0.3.1
 
 - Added PPTX to DOCX export modes for text outline, slide images, and slide images with extracted text.

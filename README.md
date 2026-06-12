@@ -19,6 +19,7 @@ FileMorph runs locally. Uploaded files are written to the local `uploads/` direc
 - Convert PPTX files to PDF with local LibreOffice.
 - Convert PPTX files to DOCX as a text outline, slide images, or slide images with extracted text.
 - Extract audio from video files as WAV or MP3 with local ffmpeg.
+- Transcribe local audio and video files to timestamped TXT with faster-whisper.
 - Clear UI feedback for uploaded files, conversion status, successful outputs, and failed files.
 
 ## Demo
@@ -66,6 +67,8 @@ python -m pytest -q
 | PPTX | PDF | One or more PPTX files | Requires LibreOffice to be installed locally. |
 | PPTX | DOCX | One or more PPTX files | Supports text outline, slide images, and mixed visual/text modes. |
 | MP4, MOV, MKV, AVI | WAV, MP3 | One or more videos | Requires ffmpeg to be installed locally. |
+| MP3, WAV, M4A, AAC, FLAC | TXT | One or more audio files | Uses local faster-whisper transcription. |
+| MP4, MOV, MKV, AVI | TXT | One or more videos | Extracts WAV audio with ffmpeg, then transcribes locally. |
 | JPG, JPEG, PNG, WEBP | TXT with OCR | Yes | Requires Tesseract to be installed locally. |
 | Scanned PDF | TXT with OCR | One or more PDFs | Converts PDF pages to images, then runs OCR locally. |
 
@@ -96,6 +99,24 @@ On macOS, install ffmpeg with:
 ```bash
 brew install ffmpeg
 ```
+
+## Audio and Video Transcription
+
+FileMorph can transcribe local audio files and video files to timestamped `.txt` output with `faster-whisper`. Video transcription first extracts WAV audio locally with ffmpeg, then transcribes the extracted audio.
+
+Transcription stays local after the model is available. The first run for a selected Whisper model may download model files to your local machine.
+
+Model options:
+
+- tiny: fastest, lowest accuracy.
+- base: balanced default.
+- small: slower, better accuracy.
+
+Language options:
+
+- Auto-detect: lets faster-whisper detect the language.
+- English: uses `en`.
+- Simplified Chinese: uses `zh`.
 
 ## OCR Text Extraction
 
@@ -157,6 +178,10 @@ For best results:
 - PPTX-to-DOCX Slide Images + Extracted Text mode includes both a visual slide preview and extracted editable text.
 - PPTX-to-DOCX slide image modes require LibreOffice and Poppler.
 - Video-to-audio requires ffmpeg.
+- Audio and video transcription requires `faster-whisper`; the first run may download a selected Whisper model.
+- Noisy audio, overlapping speakers, music, accents, and low bitrates can reduce transcription quality.
+- Long videos may take time to extract and transcribe.
+- Chinese transcription works better when the language is set to Simplified Chinese instead of Auto-detect.
 - Uploaded source files remain in `uploads/` and generated files remain in `output/` until manually removed.
 - The app is designed for local MVP usage, not multi-user hosted deployments.
 
@@ -243,6 +268,20 @@ If ffmpeg is missing, FileMorph shows this message:
 Video to audio requires ffmpeg. On macOS, install it with: brew install ffmpeg
 ```
 
+### Audio and video transcription requires faster-whisper
+
+Audio-to-TXT and Video-to-TXT use `faster-whisper`. Installing `requirements.txt` covers the Python package, but the selected Whisper model may download on first use and then be cached locally.
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+If faster-whisper is missing, FileMorph shows this message:
+
+```text
+Audio transcription requires faster-whisper. Install dependencies with: python -m pip install -r requirements.txt
+```
+
 ### OCR requires Tesseract
 
 Image OCR and scanned PDF OCR require the Python package `pytesseract` plus the local Tesseract binary. Installing `requirements.txt` covers the Python package, but Tesseract must be installed separately. On macOS, install it with:
@@ -296,6 +335,7 @@ app/
     ocr_converter.py
     office_converter.py
     pdf_converter.py
+    transcription_converter.py
   services/
     file_service.py
 audits/

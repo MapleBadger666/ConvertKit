@@ -4,6 +4,7 @@ from zipfile import ZipFile
 from app.services.file_service import (
     create_zip_archive,
     get_extension,
+    is_supported_audio,
     is_supported_image,
     is_supported_pdf,
     is_supported_pptx,
@@ -41,6 +42,15 @@ def test_supported_video_extensions():
     assert is_supported_video("clip.mkv")
     assert is_supported_video("clip.avi")
     assert not is_supported_video("clip.wav")
+
+
+def test_supported_audio_extensions():
+    assert is_supported_audio("voice.mp3")
+    assert is_supported_audio("voice.wav")
+    assert is_supported_audio("voice.m4a")
+    assert is_supported_audio("voice.aac")
+    assert is_supported_audio("voice.flac")
+    assert not is_supported_audio("voice.mp4")
 
 
 def test_unique_output_path_returns_original_name_when_available(tmp_path: Path):
