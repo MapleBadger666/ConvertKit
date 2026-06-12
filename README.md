@@ -17,7 +17,7 @@ FileMorph runs locally. Uploaded files are written to the local `uploads/` direc
 - Extract plain text from scanned PDFs and image files with local OCR.
 - Convert PDF to DOCX with `pdf2docx` as a first MVP implementation.
 - Convert PPTX files to PDF with local LibreOffice.
-- Extract PPTX slide text into DOCX.
+- Convert PPTX files to DOCX as a text outline, slide images, or slide images with extracted text.
 - Extract audio from video files as WAV or MP3 with local ffmpeg.
 - Clear UI feedback for uploaded files, conversion status, successful outputs, and failed files.
 
@@ -64,14 +64,14 @@ python -m pytest -q
 | PDF | TXT | One or more PDFs | Works best with text-based PDFs that contain selectable text. |
 | PDF | DOCX | One or more PDFs | Uses `pdf2docx`; complex layouts may need manual cleanup. |
 | PPTX | PDF | One or more PPTX files | Requires LibreOffice to be installed locally. |
-| PPTX | DOCX | One or more PPTX files | Extracts slide text into a document format, not a visual layout clone. |
+| PPTX | DOCX | One or more PPTX files | Supports text outline, slide images, and mixed visual/text modes. |
 | MP4, MOV, MKV, AVI | WAV, MP3 | One or more videos | Requires ffmpeg to be installed locally. |
 | JPG, JPEG, PNG, WEBP | TXT with OCR | Yes | Requires Tesseract to be installed locally. |
 | Scanned PDF | TXT with OCR | One or more PDFs | Converts PDF pages to images, then runs OCR locally. |
 
 ## Office Conversion
 
-FileMorph can convert PPTX presentations to PDF through LibreOffice and can extract PPTX slide text into a DOCX document with `python-pptx` and `python-docx`.
+FileMorph can convert PPTX presentations to PDF through LibreOffice and can create DOCX files from PPTX presentations in multiple modes.
 
 On macOS, install LibreOffice with:
 
@@ -79,7 +79,13 @@ On macOS, install LibreOffice with:
 brew install --cask libreoffice
 ```
 
-PPTX to DOCX is a readable text extraction workflow. It writes slide headings, titles, body text, and speaker notes when available; it does not attempt to preserve the exact PowerPoint visual layout.
+PPTX to DOCX modes:
+
+- Text Outline: extracts editable slide text into a Word outline with slide headings, titles, body text, and speaker notes when available. This is the original behavior and does not preserve the exact PowerPoint visual layout.
+- Slide Images: renders each slide as an image and inserts the images into a DOCX file. This preserves slide appearance more closely, but the slide text inside the image is not editable.
+- Slide Images + Extracted Text: inserts each slide image first, then adds extracted editable text below it.
+
+Slide image modes use LibreOffice for PPTX-to-PDF rendering and Poppler for PDF page image export.
 
 ## Media Conversion
 
@@ -146,7 +152,10 @@ For best results:
 - PDF-to-PNG requires Poppler command-line tools in addition to Python packages.
 - PDF-to-DOCX quality depends on the source PDF layout and may not perfectly preserve columns, tables, fonts, or spacing.
 - PPTX-to-PDF requires LibreOffice.
-- PPTX-to-DOCX extracts slide text into a document format and does not preserve the exact visual slide layout.
+- PPTX-to-DOCX Text Outline mode extracts editable slide text but does not preserve the exact visual slide layout.
+- PPTX-to-DOCX Slide Images mode preserves appearance more closely, but text in the slide image is not editable.
+- PPTX-to-DOCX Slide Images + Extracted Text mode includes both a visual slide preview and extracted editable text.
+- PPTX-to-DOCX slide image modes require LibreOffice and Poppler.
 - Video-to-audio requires ffmpeg.
 - Uploaded source files remain in `uploads/` and generated files remain in `output/` until manually removed.
 - The app is designed for local MVP usage, not multi-user hosted deployments.
@@ -203,6 +212,21 @@ If LibreOffice is missing, FileMorph shows this message:
 
 ```text
 PPTX to PDF requires LibreOffice. On macOS, install it with: brew install --cask libreoffice
+```
+
+### PPTX-to-DOCX slide image modes require LibreOffice and Poppler
+
+PPTX-to-DOCX Text Outline mode only needs the Python Office packages from `requirements.txt`. Slide Images and Slide Images + Extracted Text modes also render slides locally through LibreOffice and Poppler. On macOS, install them with:
+
+```bash
+brew install --cask libreoffice
+brew install poppler
+```
+
+If slide image export is unavailable, FileMorph shows this message:
+
+```text
+PPTX slide image export requires LibreOffice and Poppler. On macOS, install them with: brew install --cask libreoffice and brew install poppler
 ```
 
 ### Video-to-audio requires ffmpeg

@@ -3,6 +3,7 @@ from pathlib import Path
 from app.main import (
     EMPTY_TXT_PREVIEW_MESSAGE,
     OCR_MODE_OPTIONS,
+    PPTX_DOCX_MODE_OPTIONS,
     download_label_for_file,
     default_ocr_mode_index,
     get_allowed_upload_types,
@@ -120,6 +121,15 @@ def test_default_ocr_mode_prefers_document_for_pdf_ocr():
     assert labels[default_ocr_mode_index("ocr:pdf_txt")] == (
         "Enhanced OCR for scanned documents"
     )
+
+
+def test_pptx_docx_mode_options_default_to_text_outline():
+    assert list(PPTX_DOCX_MODE_OPTIONS) == [
+        "Text Outline",
+        "Slide Images",
+        "Slide Images + Extracted Text",
+    ]
+    assert PPTX_DOCX_MODE_OPTIONS["Text Outline"] == "text_outline"
 
 
 def test_is_low_quality_ocr_text_detects_short_or_whitespace_text():

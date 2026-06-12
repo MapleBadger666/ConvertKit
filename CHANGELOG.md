@@ -6,6 +6,13 @@ All notable changes to ConvertKit/FileMorph will be documented in this file.
 
 - No changes yet.
 
+## v0.3.1
+
+- Added PPTX to DOCX export modes for text outline, slide images, and slide images with extracted text.
+- Kept the existing PPTX to DOCX text outline behavior as the default.
+- Added local slide image export for visual DOCX output through LibreOffice and Poppler.
+- Documented PPTX to DOCX mode tradeoffs.
+
 ## v0.3.0
 
 - Added PPTX to PDF conversion through local LibreOffice.

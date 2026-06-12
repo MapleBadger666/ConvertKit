@@ -20,7 +20,13 @@ from app.converters.ocr_converter import (
     pdf_to_text_with_ocr,
     required_ocr_languages,
 )
-from app.converters.office_converter import pptx_to_docx, pptx_to_pdf
+from app.converters.office_converter import (
+    PPTX_DOCX_MODE_SLIDE_IMAGES,
+    PPTX_DOCX_MODE_SLIDE_IMAGES_WITH_TEXT,
+    PPTX_DOCX_MODE_TEXT_OUTLINE,
+    pptx_to_docx,
+    pptx_to_pdf,
+)
 from app.services.file_service import (
     OUTPUT_DIR,
     create_zip_archive,
@@ -59,6 +65,11 @@ OCR_MODE_OPTIONS = {
     "Standard OCR": OCR_MODE_STANDARD,
     "Enhanced OCR for screenshots": OCR_MODE_SCREENSHOT,
     "Enhanced OCR for scanned documents": OCR_MODE_DOCUMENT,
+}
+PPTX_DOCX_MODE_OPTIONS = {
+    "Text Outline": PPTX_DOCX_MODE_TEXT_OUTLINE,
+    "Slide Images": PPTX_DOCX_MODE_SLIDE_IMAGES,
+    "Slide Images + Extracted Text": PPTX_DOCX_MODE_SLIDE_IMAGES_WITH_TEXT,
 }
 CHINESE_OCR_LANGUAGE_WARNING = (
     "Chinese OCR language packs are not installed. "
@@ -145,6 +156,7 @@ def convert_file_paths(
     ocr_language: str = "eng",
     ocr_mode: str = OCR_MODE_STANDARD,
     audio_format: str = "wav",
+    pptx_docx_mode: str = PPTX_DOCX_MODE_TEXT_OUTLINE,
 ) -> tuple[list[Path], list[str]]:
     output_paths: list[Path] = []
     failed_files: list[str] = []
@@ -250,7 +262,9 @@ def convert_file_paths(
                 if conversion_type == "office:pptx_pdf":
                     output_paths.append(pptx_to_pdf(file_path, OUTPUT_DIR))
                 elif conversion_type == "office:pptx_docx":
-                    output_paths.append(pptx_to_docx(file_path, OUTPUT_DIR))
+                    output_paths.append(
+                        pptx_to_docx(file_path, OUTPUT_DIR, pptx_docx_mode)
+                    )
                 else:
                     failed_files.append(
                         f"{file_path.name}: unsupported Office conversion."
@@ -339,6 +353,7 @@ def main() -> None:
     selected_ocr_language = "eng"
     selected_ocr_mode = OCR_MODE_STANDARD
     selected_audio_format = "wav"
+    selected_pptx_docx_mode = PPTX_DOCX_MODE_TEXT_OUTLINE
     if conversion_type.startswith("ocr:"):
         installed_ocr_languages: set[str] = set()
         try:
@@ -373,6 +388,13 @@ def main() -> None:
         selected_audio_format_label = st.selectbox("Audio format", ["WAV", "MP3"])
         selected_audio_format = selected_audio_format_label.lower()
 
+    if conversion_type == "office:pptx_docx":
+        selected_pptx_docx_mode_label = st.selectbox(
+            "DOCX mode",
+            list(PPTX_DOCX_MODE_OPTIONS),
+        )
+        selected_pptx_docx_mode = PPTX_DOCX_MODE_OPTIONS[selected_pptx_docx_mode_label]
+
     uploaded_files = st.file_uploader(
         "Upload files",
         accept_multiple_files=True,
@@ -406,6 +428,7 @@ def main() -> None:
                 selected_ocr_language,
                 selected_ocr_mode,
                 selected_audio_format,
+                selected_pptx_docx_mode,
             )
 
         if output_paths:
