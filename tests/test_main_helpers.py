@@ -1,6 +1,8 @@
 from pathlib import Path
 
+from app import main as app_main
 from app.main import (
+    CONVERSION_CATEGORIES,
     EMPTY_TXT_PREVIEW_MESSAGE,
     OCR_MODE_OPTIONS,
     PPTX_DOCX_MODE_OPTIONS,
@@ -8,14 +10,18 @@ from app.main import (
     TRANSCRIPTION_MODEL_GUIDANCE,
     TRANSCRIPTION_MODEL_OPTIONS,
     TRANSCRIPTION_AUDIO_GUIDANCE,
+    conversion_help_text,
+    dependency_status_label,
     download_label_for_file,
     default_ocr_mode_index,
     get_allowed_upload_types,
+    get_category_conversion_options,
     get_transcription_language_code,
     get_available_ocr_language_options,
     is_low_quality_ocr_text,
     mime_type_for_file,
     should_show_ocr_quality_warning,
+    system_dependency_rows,
     transcription_language_guidance,
     transcription_post_conversion_messages,
     txt_preview_for_file,
@@ -73,6 +79,42 @@ def test_get_allowed_upload_types_for_image_conversions():
     assert get_allowed_upload_types("ocr:image_txt") == ["jpg", "jpeg", "png", "webp"]
 
 
+def test_conversion_categories_cover_existing_options():
+    labels = [
+        label
+        for category_labels in CONVERSION_CATEGORIES.values()
+        for label in category_labels
+    ]
+
+    assert labels == [
+        "Images to JPG",
+        "Images to PNG",
+        "Images to WEBP",
+        "Images to one PDF",
+        "PDF pages to PNG",
+        "PDF to TXT",
+        "PDF to DOCX",
+        "Image to TXT (OCR)",
+        "Scanned PDF to TXT (OCR)",
+        "PPTX to PDF",
+        "PPTX to DOCX",
+        "Video to Audio",
+        "Audio to TXT",
+        "Video to TXT",
+    ]
+
+
+def test_get_category_conversion_options_returns_only_category_items():
+    assert get_category_conversion_options("Office") == {
+        "PPTX to PDF": "office:pptx_pdf",
+        "PPTX to DOCX": "office:pptx_docx",
+    }
+    assert get_category_conversion_options("Transcription") == {
+        "Audio to TXT": "transcription:audio_txt",
+        "Video to TXT": "transcription:video_txt",
+    }
+
+
 def test_get_allowed_upload_types_for_pdf_conversions():
     assert get_allowed_upload_types("pdf:txt") == ["pdf"]
     assert get_allowed_upload_types("pdf:png") == ["pdf"]
@@ -103,6 +145,37 @@ def test_get_allowed_upload_types_for_transcription_conversions():
         "mkv",
         "avi",
     ]
+
+
+def test_dependency_status_label_uses_lightweight_command_lookup(monkeypatch):
+    monkeypatch.setattr(app_main, "which", lambda command: f"/usr/bin/{command}")
+    assert dependency_status_label(["ffmpeg"]) == "Detected"
+
+    monkeypatch.setattr(app_main, "which", lambda command: None)
+    assert dependency_status_label(["ffmpeg"]) == "Not detected"
+    assert dependency_status_label([]) == "Python package"
+
+
+def test_system_dependency_rows_include_install_guidance(monkeypatch):
+    monkeypatch.setattr(app_main, "which", lambda command: f"/usr/bin/{command}")
+
+    rows = system_dependency_rows()
+
+    assert {
+        "Dependency": "ffmpeg",
+        "Required for": "Video to Audio, Video to TXT, audio preprocessing",
+        "Install": "brew install ffmpeg",
+        "Status": "Detected",
+    } in rows
+    assert any(row["Dependency"] == "faster-whisper" for row in rows)
+
+
+def test_conversion_help_text_covers_major_groups():
+    assert "enhanced modes" in conversion_help_text("ocr:image_txt")
+    assert "Text Outline is editable" in conversion_help_text("office:pptx_docx")
+    assert "small for better accuracy" in conversion_help_text("transcription:audio_txt")
+    assert "MP3 is smaller" in conversion_help_text("media:audio")
+    assert "processed locally" in conversion_help_text("image:png")
 
 
 def test_get_allowed_upload_types_falls_back_to_all_supported_types():

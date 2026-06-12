@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from shutil import which
 
 import streamlit as st
 
@@ -58,6 +59,42 @@ CONVERSION_OPTIONS = {
     "Image to TXT (OCR)": "ocr:image_txt",
     "Scanned PDF to TXT (OCR)": "ocr:pdf_txt",
 }
+CONVERSION_CATEGORIES = {
+    "Images": [
+        "Images to JPG",
+        "Images to PNG",
+        "Images to WEBP",
+        "Images to one PDF",
+    ],
+    "PDF": [
+        "PDF pages to PNG",
+        "PDF to TXT",
+        "PDF to DOCX",
+    ],
+    "OCR": [
+        "Image to TXT (OCR)",
+        "Scanned PDF to TXT (OCR)",
+    ],
+    "Office": [
+        "PPTX to PDF",
+        "PPTX to DOCX",
+    ],
+    "Media": [
+        "Video to Audio",
+    ],
+    "Transcription": [
+        "Audio to TXT",
+        "Video to TXT",
+    ],
+}
+CONVERSION_CATEGORY_HELP = {
+    "Images": "Convert common image formats or combine images into one PDF.",
+    "PDF": "Convert PDF pages, extract selectable text, or create DOCX drafts.",
+    "OCR": "Use enhanced modes for screenshots or scanned documents.",
+    "Office": "Convert presentations to PDF or DOCX.",
+    "Media": "WAV is best for transcription; MP3 is smaller.",
+    "Transcription": "Use small for better accuracy; choose language manually for short clips.",
+}
 
 OCR_LANGUAGE_OPTIONS = {
     "English": "eng",
@@ -111,11 +148,99 @@ TRANSCRIPTION_MODEL_GUIDANCE = (
 TRANSCRIPTION_AUDIO_GUIDANCE = (
     "Use short, clear audio when possible. Background noise and low volume can reduce accuracy."
 )
+SYSTEM_DEPENDENCIES = [
+    {
+        "name": "Poppler",
+        "commands": ["pdfinfo", "pdftoppm"],
+        "required_for": "PDF to PNG, scanned PDF OCR, PPTX slide-image DOCX",
+        "install": "brew install poppler",
+    },
+    {
+        "name": "Tesseract",
+        "commands": ["tesseract"],
+        "required_for": "Image OCR, scanned PDF OCR",
+        "install": "brew install tesseract",
+    },
+    {
+        "name": "LibreOffice",
+        "commands": ["soffice"],
+        "required_for": "PPTX to PDF, PPTX slide-image DOCX",
+        "install": "brew install --cask libreoffice",
+    },
+    {
+        "name": "ffmpeg",
+        "commands": ["ffmpeg"],
+        "required_for": "Video to Audio, Video to TXT, audio preprocessing",
+        "install": "brew install ffmpeg",
+    },
+    {
+        "name": "faster-whisper",
+        "commands": [],
+        "required_for": "Audio to TXT, Video to TXT",
+        "install": "python -m pip install -r requirements.txt",
+    },
+]
 
 
 def readable_error(exc: Exception) -> str:
     message = str(exc).strip()
     return message or exc.__class__.__name__
+
+
+def get_category_conversion_options(category: str) -> dict[str, str]:
+    return {
+        label: CONVERSION_OPTIONS[label]
+        for label in CONVERSION_CATEGORIES[category]
+    }
+
+
+def command_group_available(commands: list[str]) -> bool | None:
+    if not commands:
+        return None
+
+    return all(which(command) for command in commands)
+
+
+def dependency_status_label(commands: list[str]) -> str:
+    available = command_group_available(commands)
+    if available is None:
+        return "Python package"
+
+    return "Detected" if available else "Not detected"
+
+
+def system_dependency_rows() -> list[dict[str, str]]:
+    return [
+        {
+            "Dependency": dependency["name"],
+            "Required for": dependency["required_for"],
+            "Install": dependency["install"],
+            "Status": dependency_status_label(dependency["commands"]),
+        }
+        for dependency in SYSTEM_DEPENDENCIES
+    ]
+
+
+def conversion_help_text(conversion_type: str) -> str:
+    if conversion_type.startswith("ocr:"):
+        return "Use enhanced modes for screenshots or scanned documents."
+
+    if conversion_type == "office:pptx_docx":
+        return "Text Outline is editable; Slide Images preserves appearance; Mixed gives both."
+
+    if conversion_type.startswith("transcription:"):
+        return "Use small for better accuracy; choose language manually for short clips."
+
+    if conversion_type == "media:audio":
+        return "WAV is best for transcription; MP3 is smaller."
+
+    if conversion_type.startswith("pdf:"):
+        return "Some PDF workflows require local system tools such as Poppler."
+
+    if conversion_type.startswith("office:"):
+        return "PowerPoint visual conversion requires local LibreOffice."
+
+    return "Files are processed locally and generated outputs are saved to output/."
 
 
 def get_allowed_upload_types(conversion_type: str) -> list[str]:
@@ -447,10 +572,25 @@ def show_txt_preview(file_path: Path) -> None:
 def main() -> None:
     st.set_page_config(page_title="FileMorph", page_icon="FM", layout="centered")
     st.title("FileMorph")
-    st.caption("Local file conversion MVP. Files stay on this machine.")
+    st.caption(
+        "FileMorph is a local-only file conversion toolkit for documents, images, OCR, media, and transcription."
+    )
+    st.write(
+        "Runs locally. No cloud upload. Some conversions require system tools installed on this machine."
+    )
 
-    selected_label = st.selectbox("Conversion type", list(CONVERSION_OPTIONS))
-    conversion_type = CONVERSION_OPTIONS[selected_label]
+    with st.expander("System dependencies"):
+        st.table(system_dependency_rows())
+        st.caption(
+            "Status checks are lightweight command lookups. Python packages are managed through requirements.txt."
+        )
+
+    selected_category = st.selectbox("Category", list(CONVERSION_CATEGORIES))
+    st.caption(CONVERSION_CATEGORY_HELP[selected_category])
+    category_options = get_category_conversion_options(selected_category)
+    selected_label = st.selectbox("Conversion type", list(category_options))
+    conversion_type = category_options[selected_label]
+    st.info(conversion_help_text(conversion_type))
     selected_ocr_language = "eng"
     selected_ocr_mode = OCR_MODE_STANDARD
     selected_audio_format = "wav"

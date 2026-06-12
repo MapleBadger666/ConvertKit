@@ -1,6 +1,6 @@
 # FileMorph
 
-FileMorph is a local Streamlit app for quick file conversion workflows. It currently focuses on common image, PDF, Office, and media transformations, with generated files saved to `output/` on your machine.
+FileMorph is a local-only Streamlit file conversion toolkit for documents, images, OCR, media, and transcription. It is built for practical desktop workflows where files stay on your machine and generated outputs are saved to `output/`.
 
 ## Local-Only Privacy Note
 
@@ -8,19 +8,14 @@ FileMorph runs locally. Uploaded files are written to the local `uploads/` direc
 
 ## Features
 
-- Batch image conversion between JPG, PNG, and WEBP.
-- Safe JPG output for transparent images by flattening alpha onto a white background.
-- ZIP download packaging when a conversion creates multiple output files.
-- Convert multiple images into one PDF.
-- Convert PDF pages to PNG images.
-- Extract text from text-based PDFs into TXT.
-- Extract plain text from scanned PDFs and image files with local OCR.
-- Convert PDF to DOCX with `pdf2docx` as a first MVP implementation.
-- Convert PPTX files to PDF with local LibreOffice.
-- Convert PPTX files to DOCX as a text outline, slide images, or slide images with extracted text.
-- Extract audio from video files as WAV or MP3 with local ffmpeg.
-- Transcribe local audio and video files to timestamped TXT with faster-whisper.
-- Clear UI feedback for uploaded files, conversion status, successful outputs, and failed files.
+| Group | Features |
+| --- | --- |
+| Images | Batch JPG, JPEG, PNG, and WEBP conversion; combine images into one PDF. |
+| PDF | Convert PDF pages to PNG, extract selectable PDF text to TXT, convert PDF to DOCX. |
+| OCR | Extract text from images and scanned PDFs with local Tesseract OCR. |
+| Office | Convert PPTX to PDF; convert PPTX to DOCX as editable outline, slide images, or mixed output. |
+| Media | Extract WAV or MP3 audio from video files. |
+| Transcription | Transcribe local audio and video files to timestamped TXT with faster-whisper. |
 
 ## Demo
 
@@ -38,10 +33,36 @@ FileMorph supports local-only conversion. Users can upload files, convert them l
 
 ## Quick Start
 
+1. Clone the repository:
+
+```bash
+git clone <repository-url>
+cd ConvertKit
+```
+
+2. Create and activate a Python environment:
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate
+```
+
+3. Install Python dependencies:
+
+```bash
 python -m pip install -r requirements.txt
+```
+
+4. Install system dependencies for the workflows you need. On macOS, the full local toolchain is:
+
+```bash
+brew install poppler tesseract tesseract-lang ffmpeg
+brew install --cask libreoffice
+```
+
+5. Run Streamlit:
+
+```bash
 streamlit run app/main.py
 ```
 
@@ -71,6 +92,17 @@ python -m pytest -q
 | MP4, MOV, MKV, AVI | TXT | One or more videos | Extracts WAV audio with ffmpeg, then transcribes locally. |
 | JPG, JPEG, PNG, WEBP | TXT with OCR | Yes | Requires Tesseract to be installed locally. |
 | Scanned PDF | TXT with OCR | One or more PDFs | Converts PDF pages to images, then runs OCR locally. |
+
+## System Dependencies
+
+| Dependency | Required for | macOS install command |
+| --- | --- | --- |
+| Poppler | PDF to PNG, scanned PDF OCR, PPTX slide-image DOCX | `brew install poppler` |
+| Tesseract | Image OCR, scanned PDF OCR | `brew install tesseract` |
+| Tesseract language data | Chinese OCR language options | `brew install tesseract-lang` |
+| LibreOffice | PPTX to PDF, PPTX slide-image DOCX | `brew install --cask libreoffice` |
+| ffmpeg | Video to Audio, Video to TXT, audio preprocessing | `brew install ffmpeg` |
+| faster-whisper | Audio to TXT, Video to TXT | `python -m pip install -r requirements.txt` |
 
 ## Office Conversion
 
@@ -178,9 +210,10 @@ For best results:
 - Install `tesseract-lang` for Chinese OCR.
 - Expect screenshots with code, UI chrome, dense layouts, or dark themes to be imperfect.
 
-## Limitations
+## Current Limitations
 
 - OCR quality depends on scan clarity, resolution, contrast, orientation, and installed language data.
+- Transcription quality depends on speech clarity, microphone quality, background noise, volume, and language selection.
 - Handwriting may be inaccurate or unreadable.
 - Screenshots with code, UI elements, dark backgrounds, or mixed fonts may be imperfect.
 - Complex tables, columns, and visual layouts are not preserved in OCR TXT output.

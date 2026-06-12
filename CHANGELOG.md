@@ -6,6 +6,15 @@ All notable changes to ConvertKit/FileMorph will be documented in this file.
 
 - No changes yet.
 
+## v0.4.0
+
+- Added product polish for the Streamlit landing area.
+- Grouped conversion options by category for clearer navigation.
+- Added in-app dependency guidance with lightweight command status checks.
+- Added concise conversion-specific help text.
+- Polished the README for release readiness with grouped features, dependency guidance, quick start, and limitations.
+- Standardized user-facing help around local system dependencies.
+
 ## v0.3.3
 
 - Added local audio normalization before faster-whisper transcription.
