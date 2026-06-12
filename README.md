@@ -2,6 +2,12 @@
 
 FileMorph is a local-only Streamlit file conversion toolkit for documents, images, OCR, media, and transcription. It is built for practical desktop workflows where files stay on your machine and generated outputs are saved to `output/`.
 
+## Preview
+
+![FileMorph v0.4 main UI](docs/screenshots/v0.4.0-main-ui.png)
+
+![FileMorph transcription UI](docs/screenshots/v0.4.0-transcription-ui.png)
+
 ## Local-Only Privacy Note
 
 FileMorph runs locally. Uploaded files are written to the local `uploads/` directory, converted files are written to `output/`, and no cloud APIs or external upload services are used by the app.

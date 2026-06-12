@@ -6,6 +6,10 @@ All notable changes to ConvertKit/FileMorph will be documented in this file.
 
 - No changes yet.
 
+## v0.4.1
+
+- Added updated v0.4 UI screenshots to README.
+
 ## v0.4.0
 
 - Added product polish for the Streamlit landing area.
