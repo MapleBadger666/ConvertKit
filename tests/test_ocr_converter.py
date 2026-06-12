@@ -65,6 +65,31 @@ def test_image_to_text_rejects_unsupported_extension_before_tesseract_check(
         raise AssertionError("Expected unsupported image format to raise ValueError")
 
 
+def test_image_to_text_checks_heif_support_before_tesseract(
+    tmp_path: Path,
+    monkeypatch,
+):
+    source = tmp_path / "photo.heic"
+    source.write_text("not a real heic", encoding="utf-8")
+    monkeypatch.setattr(
+        ocr_converter,
+        "ensure_heif_support",
+        lambda path: (_ for _ in ()).throw(RuntimeError("missing heif support")),
+    )
+    monkeypatch.setattr(
+        ocr_converter,
+        "ensure_tesseract_available",
+        lambda: (_ for _ in ()).throw(AssertionError("should not check tesseract")),
+    )
+
+    try:
+        image_to_text(source)
+    except RuntimeError as exc:
+        assert str(exc) == "missing heif support"
+    else:
+        raise AssertionError("Expected missing HEIF support to raise RuntimeError")
+
+
 def test_parse_tesseract_languages_skips_header_lines():
     output = """
 List of available languages in "/opt/homebrew/share/tessdata/" (3):

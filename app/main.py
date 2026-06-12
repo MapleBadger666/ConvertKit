@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 import sys
 from pathlib import Path
 from shutil import which
@@ -10,7 +11,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.converters.pdf_converter import images_to_pdf, pdf_to_docx, pdf_to_png, pdf_to_txt
+from app.converters.pdf_converter import (
+    image_to_pdf,
+    images_to_pdf,
+    pdf_to_docx,
+    pdf_to_png,
+    pdf_to_txt,
+)
 from app.converters.media_converter import video_to_audio
 from app.converters.ocr_converter import (
     OCR_MODE_DOCUMENT,
@@ -48,6 +55,7 @@ CONVERSION_OPTIONS = {
     "Images to PNG": "image:png",
     "Images to WEBP": "image:webp",
     "Images to one PDF": "images:pdf",
+    "Images to separate PDFs": "images:pdf_each",
     "PDF pages to PNG": "pdf:png",
     "PDF to TXT": "pdf:txt",
     "PDF to DOCX": "pdf:docx",
@@ -65,6 +73,7 @@ CONVERSION_CATEGORIES = {
         "Images to PNG",
         "Images to WEBP",
         "Images to one PDF",
+        "Images to separate PDFs",
     ],
     "PDF": [
         "PDF pages to PNG",
@@ -88,7 +97,7 @@ CONVERSION_CATEGORIES = {
     ],
 }
 CONVERSION_CATEGORY_HELP = {
-    "Images": "Convert common image formats or combine images into one PDF.",
+    "Images": "Convert common image formats or create PDFs from images.",
     "PDF": "Convert PDF pages, extract selectable text, or create DOCX drafts.",
     "OCR": "Use enhanced modes for screenshots or scanned documents.",
     "Office": "Convert presentations to PDF or DOCX.",
@@ -180,6 +189,12 @@ SYSTEM_DEPENDENCIES = [
         "install": "python -m pip install -r requirements.txt",
     },
 ]
+HISTORY_STATE_KEY = "conversion_history"
+ZIP_ARCHIVE_NAME = "filemorph_outputs.zip"
+JOB_STATUS_PENDING = "pending"
+JOB_STATUS_RUNNING = "running"
+JOB_STATUS_SUCCESS = "success"
+JOB_STATUS_FAILED = "failed"
 
 
 def readable_error(exc: Exception) -> str:
@@ -222,6 +237,12 @@ def system_dependency_rows() -> list[dict[str, str]]:
 
 
 def conversion_help_text(conversion_type: str) -> str:
+    if conversion_type == "images:pdf":
+        return "Combine multiple images into a single PDF."
+
+    if conversion_type == "images:pdf_each":
+        return "Convert each image into its own PDF."
+
     if conversion_type.startswith("ocr:"):
         return "Use enhanced modes for screenshots or scanned documents."
 
@@ -243,8 +264,161 @@ def conversion_help_text(conversion_type: str) -> str:
     return "Files are processed locally and generated outputs are saved to output/."
 
 
+def create_job_item(
+    input_filename: str,
+    conversion_type: str,
+    input_count: int = 1,
+) -> dict:
+    return {
+        "input_filename": input_filename,
+        "conversion_type": conversion_type,
+        "input_count": input_count,
+        "status": JOB_STATUS_PENDING,
+        "output_paths": [],
+        "error": "",
+    }
+
+
+def mark_job_running(job_item: dict) -> dict:
+    job_item["status"] = JOB_STATUS_RUNNING
+    return job_item
+
+
+def mark_job_success(
+    job_item: dict,
+    output_paths: list[Path],
+    successful_count: int = 1,
+) -> dict:
+    job_item["status"] = JOB_STATUS_SUCCESS
+    job_item["output_paths"] = list(output_paths)
+    job_item["error"] = ""
+    job_item["successful_count"] = successful_count
+    job_item["failed_count"] = 0
+    return job_item
+
+
+def mark_job_failed(job_item: dict, error: str, failed_count: int = 1) -> dict:
+    job_item["status"] = JOB_STATUS_FAILED
+    job_item["output_paths"] = []
+    job_item["error"] = error
+    job_item["successful_count"] = 0
+    job_item["failed_count"] = failed_count
+    return job_item
+
+
+def job_summary(job_items: list[dict]) -> dict[str, int]:
+    total = sum(item.get("input_count", 1) for item in job_items)
+    completed = sum(
+        item.get("input_count", 1)
+        for item in job_items
+        if item["status"] in {JOB_STATUS_SUCCESS, JOB_STATUS_FAILED}
+    )
+    successful = sum(
+        item.get("successful_count", 1)
+        for item in job_items
+        if item["status"] == JOB_STATUS_SUCCESS
+    )
+    failed = sum(
+        item.get("failed_count", 1)
+        for item in job_items
+        if item["status"] == JOB_STATUS_FAILED
+    )
+    return {
+        "total": total,
+        "completed": completed,
+        "successful": successful,
+        "failed": failed,
+    }
+
+
+def successful_output_paths(job_items: list[dict]) -> list[Path]:
+    output_paths: list[Path] = []
+    seen_paths: set[Path] = set()
+    for item in job_items:
+        if item["status"] != JOB_STATUS_SUCCESS:
+            continue
+        for output_path in item["output_paths"]:
+            path = Path(output_path)
+            if path in seen_paths:
+                continue
+            seen_paths.add(path)
+            output_paths.append(path)
+
+    return output_paths
+
+
+def output_table_rows(job_items: list[dict]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for item in job_items:
+        if item["output_paths"]:
+            for output_path in item["output_paths"]:
+                rows.append(
+                    {
+                        "Source": item["input_filename"],
+                        "Output": Path(output_path).name,
+                        "Status": item["status"],
+                    }
+                )
+        else:
+            rows.append(
+                {
+                    "Source": item["input_filename"],
+                    "Output": "",
+                    "Status": item["status"],
+                }
+            )
+
+    return rows
+
+
+def create_success_zip(
+    output_paths: list[Path],
+    output_dir: str | Path = OUTPUT_DIR,
+) -> Path:
+    return create_zip_archive(output_paths, output_dir, ZIP_ARCHIVE_NAME)
+
+
+def create_history_entry(
+    conversion_label: str,
+    input_count: int,
+    successful_count: int,
+    failed_count: int,
+    timestamp: datetime | None = None,
+) -> dict[str, str | int]:
+    created_at = timestamp or datetime.now()
+    return {
+        "Timestamp": created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "Conversion": conversion_label,
+        "Input files": input_count,
+        "Successful": successful_count,
+        "Failed": failed_count,
+    }
+
+
+def get_conversion_history(session_state) -> list[dict]:
+    if HISTORY_STATE_KEY not in session_state:
+        session_state[HISTORY_STATE_KEY] = []
+
+    return session_state[HISTORY_STATE_KEY]
+
+
+def add_history_entry(
+    session_state,
+    history_entry: dict,
+    limit: int = 10,
+) -> list[dict]:
+    history = get_conversion_history(session_state)
+    history.insert(0, history_entry)
+    del history[limit:]
+    return history
+
+
+def clear_conversion_history(session_state) -> None:
+    session_state[HISTORY_STATE_KEY] = []
+
+
 def get_allowed_upload_types(conversion_type: str) -> list[str]:
-    image_types = ["jpg", "jpeg", "png", "webp"]
+    image_types = ["jpg", "jpeg", "png", "webp", "heic", "heif"]
     pdf_types = ["pdf"]
     pptx_types = ["pptx"]
     video_types = ["mp4", "mov", "mkv", "avi"]
@@ -253,7 +427,7 @@ def get_allowed_upload_types(conversion_type: str) -> list[str]:
     if conversion_type.startswith("image:"):
         return image_types
 
-    if conversion_type == "images:pdf":
+    if conversion_type in {"images:pdf", "images:pdf_each"}:
         return image_types
 
     if conversion_type == "ocr:image_txt":
@@ -376,9 +550,26 @@ def convert_file_paths(
             try:
                 output_paths.append(images_to_pdf(image_paths, OUTPUT_DIR))
             except Exception as exc:
-                failed_files.append(f"Images to PDF: {readable_error(exc)}")
+                failed_files.append(
+                    f"Images to one PDF failed: {readable_error(exc)}"
+                )
         else:
-            failed_files.append("Images to PDF: upload at least one supported image.")
+            failed_files.append(
+                "Images to one PDF failed: upload at least one supported image."
+            )
+
+        return output_paths, failed_files
+
+    if conversion_type == "images:pdf_each":
+        for file_path in file_paths:
+            if not is_supported_image(file_path):
+                failed_files.append(f"{file_path.name}: unsupported image format.")
+                continue
+
+            try:
+                output_paths.append(image_to_pdf(file_path, OUTPUT_DIR))
+            except Exception as exc:
+                failed_files.append(f"{file_path.name}: {readable_error(exc)}")
 
         return output_paths, failed_files
 
@@ -516,6 +707,100 @@ def convert_file_paths(
     return output_paths, [f"Unsupported conversion type: {conversion_type}"]
 
 
+def process_images_to_pdf_batch(
+    file_paths: list[Path],
+    progress_callback=None,
+) -> list[dict]:
+    input_count = len(file_paths)
+    source_label = f"{input_count} image{'s' if input_count != 1 else ''}"
+    group_job = create_job_item(source_label, "images:pdf", input_count=input_count)
+    job_items = [group_job]
+    mark_job_running(group_job)
+    if progress_callback:
+        progress_callback(job_items, 0, input_count, group_job)
+
+    unsupported_files = [
+        file_path.name for file_path in file_paths if not is_supported_image(file_path)
+    ]
+    if unsupported_files:
+        mark_job_failed(
+            group_job,
+            "Unsupported image format: " + ", ".join(unsupported_files),
+        )
+        if progress_callback:
+            progress_callback(job_items, input_count, input_count, group_job)
+        return job_items
+
+    try:
+        output_paths, failed_files = convert_file_paths(file_paths, "images:pdf")
+        if output_paths and not failed_files:
+            mark_job_success(group_job, output_paths, successful_count=1)
+        else:
+            error = (
+                "; ".join(failed_files)
+                or "Images to one PDF failed: no output was generated."
+            )
+            mark_job_failed(group_job, error)
+    except Exception as exc:
+        mark_job_failed(group_job, readable_error(exc))
+
+    if progress_callback:
+        progress_callback(job_items, input_count, input_count, group_job)
+
+    return job_items
+
+
+def process_conversion_batch(
+    file_paths: list[Path],
+    conversion_type: str,
+    ocr_language: str = "eng",
+    ocr_mode: str = OCR_MODE_STANDARD,
+    audio_format: str = "wav",
+    pptx_docx_mode: str = PPTX_DOCX_MODE_TEXT_OUTLINE,
+    transcription_model_size: str = "base",
+    transcription_language: str | None = None,
+    progress_callback=None,
+) -> list[dict]:
+    if conversion_type == "images:pdf":
+        return process_images_to_pdf_batch(file_paths, progress_callback)
+
+    job_items = [create_job_item(path.name, conversion_type) for path in file_paths]
+    total_files = len(job_items)
+
+    for index, (file_path, job_item) in enumerate(
+        zip(file_paths, job_items),
+        start=1,
+    ):
+        mark_job_running(job_item)
+        if progress_callback:
+            progress_callback(job_items, index, total_files, job_item)
+
+        try:
+            output_paths, failed_files = convert_file_paths(
+                [file_path],
+                conversion_type,
+                ocr_language,
+                ocr_mode,
+                audio_format,
+                pptx_docx_mode,
+                transcription_model_size,
+                transcription_language,
+            )
+
+            if output_paths and not failed_files:
+                mark_job_success(job_item, output_paths)
+            else:
+                error = "; ".join(failed_files) or "No output was generated."
+                mark_job_failed(job_item, error)
+        except Exception as exc:
+            mark_job_failed(job_item, readable_error(exc))
+
+        if progress_callback:
+            progress_callback(job_items, index, total_files, job_item)
+
+    return job_items
+
+
 def mime_type_for_file(file_path: Path) -> str:
     return MIME_TYPES.get(file_path.suffix.lower(), "application/octet-stream")
 
@@ -546,12 +831,13 @@ def should_show_ocr_quality_warning(file_path: Path) -> bool:
     return is_low_quality_ocr_text(file_path.read_text(encoding="utf-8", errors="replace"))
 
 
-def show_download_button(file_path: Path, label: str) -> None:
+def show_download_button(file_path: Path, label: str, key: str | None = None) -> None:
     st.download_button(
         label,
         data=file_path.read_bytes(),
         file_name=file_path.name,
         mime=mime_type_for_file(file_path),
+        key=key,
     )
 
 
@@ -584,6 +870,16 @@ def main() -> None:
         st.caption(
             "Status checks are lightweight command lookups. Python packages are managed through requirements.txt."
         )
+
+    with st.expander("Conversion history"):
+        history = get_conversion_history(st.session_state)
+        if history:
+            st.table(history)
+            if st.button("Clear history"):
+                clear_conversion_history(st.session_state)
+                st.rerun()
+        else:
+            st.caption("No conversions yet in this app session.")
 
     selected_category = st.selectbox("Category", list(CONVERSION_CATEGORIES))
     st.caption(CONVERSION_CATEGORY_HELP[selected_category])
@@ -682,8 +978,27 @@ def main() -> None:
             return
 
         status.info("Converting files...")
+        progress_bar = st.progress(0)
+
+        def update_progress(
+            job_items: list[dict],
+            current_index: int,
+            total_files: int,
+            current_job: dict,
+        ) -> None:
+            summary = job_summary(job_items)
+            completed = summary["completed"]
+            progress = 0 if total_files == 0 else completed / total_files
+            progress_bar.progress(min(progress, 1.0))
+            status.info(
+                "Converting "
+                f"{current_job['input_filename']} "
+                f"({completed}/{total_files} completed, "
+                f"{summary['successful']} successful, {summary['failed']} failed)."
+            )
+
         with st.spinner("Converting..."):
-            output_paths, failed_files = convert_file_paths(
+            job_items = process_conversion_batch(
                 saved_files,
                 conversion_type,
                 selected_ocr_language,
@@ -692,19 +1007,37 @@ def main() -> None:
                 selected_pptx_docx_mode,
                 selected_transcription_model_size,
                 selected_transcription_language,
+                update_progress,
             )
 
-        if output_paths:
-            status.success(
-                f"Conversion complete. {len(output_paths)} successful output(s)."
-            )
+        summary = job_summary(job_items)
+        output_paths = successful_output_paths(job_items)
+        progress_bar.progress(1.0)
+        if summary["successful"]:
+            status.success("Conversion complete.")
         else:
             status.error("Conversion finished with no successful outputs.")
 
-        if failed_files:
+        add_history_entry(
+            st.session_state,
+            create_history_entry(
+                selected_label,
+                summary["total"],
+                summary["successful"],
+                summary["failed"],
+            ),
+        )
+
+        summary_columns = st.columns(3)
+        summary_columns[0].metric("Total files", summary["total"])
+        summary_columns[1].metric("Successful", summary["successful"])
+        summary_columns[2].metric("Failed", summary["failed"])
+
+        if summary["failed"]:
             st.error("Some files could not be converted.")
-            for failed_file in failed_files:
-                st.warning(failed_file)
+            for job_item in job_items:
+                if job_item["status"] == JOB_STATUS_FAILED:
+                    st.warning(f"{job_item['input_filename']}: {job_item['error']}")
 
         if not output_paths:
             return
@@ -716,30 +1049,33 @@ def main() -> None:
             ):
                 st.info(message)
 
+        st.write("Output files:")
+        st.table(output_table_rows(job_items))
+
         zip_path = None
         if len(output_paths) > 1:
             try:
-                zip_path = create_zip_archive(output_paths, OUTPUT_DIR)
+                zip_path = create_success_zip(output_paths, OUTPUT_DIR)
             except Exception as exc:
                 st.warning(f"ZIP packaging failed: {readable_error(exc)}")
 
         st.write("Generated files:")
-        for output_path in output_paths:
+        for index, output_path in enumerate(output_paths):
             st.code(str(output_path))
             show_txt_preview(output_path)
             if conversion_type.startswith("ocr:") and should_show_ocr_quality_warning(
                 output_path
             ):
                 st.warning(OCR_LOW_QUALITY_WARNING)
-
-        if len(output_paths) == 1:
             show_download_button(
-                output_paths[0],
-                download_label_for_file(output_paths[0]),
+                output_path,
+                download_label_for_file(output_path),
+                key=f"download-output-{index}-{output_path.name}",
             )
-        elif zip_path:
+
+        if zip_path:
             st.code(str(zip_path))
-            show_download_button(zip_path, "Download ZIP")
+            show_download_button(zip_path, "Download ZIP", key="download-output-zip")
 
 
 if __name__ == "__main__":

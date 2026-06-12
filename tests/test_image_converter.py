@@ -1,8 +1,15 @@
+import builtins
 from pathlib import Path
 
 from PIL import Image
 
-from app.converters.image_converter import convert_image, convert_images
+from app.converters import image_converter
+from app.converters.image_converter import (
+    HEIF_SUPPORT_ERROR_MESSAGE,
+    convert_image,
+    convert_images,
+    ensure_heif_support,
+)
 
 
 def test_convert_png_to_webp(tmp_path: Path):
@@ -52,3 +59,22 @@ def test_unsupported_image_format_raises_clear_error(tmp_path: Path):
         assert "Unsupported image format" in str(exc)
     else:
         raise AssertionError("Expected unsupported image format to raise ValueError")
+
+
+def test_missing_heif_support_raises_install_guidance(monkeypatch):
+    monkeypatch.setattr(image_converter, "_HEIF_OPENER_REGISTERED", False)
+    original_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "pillow_heif":
+            raise ImportError("missing pillow-heif")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    try:
+        ensure_heif_support(Path("photo.heic"))
+    except RuntimeError as exc:
+        assert str(exc) == HEIF_SUPPORT_ERROR_MESSAGE
+    else:
+        raise AssertionError("Expected missing pillow-heif to raise RuntimeError")

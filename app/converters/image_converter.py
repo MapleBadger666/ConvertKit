@@ -12,6 +12,33 @@ from app.services.file_service import (
 
 
 TARGET_FORMATS = {"jpg": "JPEG", "jpeg": "JPEG", "png": "PNG", "webp": "WEBP"}
+HEIF_EXTENSIONS = {"heic", "heif"}
+HEIF_SUPPORT_ERROR_MESSAGE = (
+    "HEIC/HEIF support requires pillow-heif. Install dependencies with: "
+    "python -m pip install -r requirements.txt"
+)
+_HEIF_OPENER_REGISTERED = False
+
+
+def is_heif_image_path(image_path: str | Path) -> bool:
+    return Path(image_path).suffix.lower().lstrip(".") in HEIF_EXTENSIONS
+
+
+def ensure_heif_support(image_path: str | Path) -> None:
+    global _HEIF_OPENER_REGISTERED
+    if not is_heif_image_path(image_path):
+        return
+
+    if _HEIF_OPENER_REGISTERED:
+        return
+
+    try:
+        from pillow_heif import register_heif_opener
+    except ImportError as exc:
+        raise RuntimeError(HEIF_SUPPORT_ERROR_MESSAGE) from exc
+
+    register_heif_opener()
+    _HEIF_OPENER_REGISTERED = True
 
 
 def normalize_image_target_format(target_format: str) -> str:
@@ -57,6 +84,7 @@ def convert_image(
     normalized = normalize_image_target_format(target_format)
     output_path = unique_output_path(source, normalized, output_dir)
     pil_format = TARGET_FORMATS[normalized]
+    ensure_heif_support(source)
 
     with Image.open(source) as image:
         prepared = prepare_image_for_format(image, normalized)

@@ -6,6 +6,7 @@ from shutil import which
 
 from PIL import Image, ImageEnhance
 
+from app.converters.image_converter import ensure_heif_support
 from app.converters.pdf_converter import POPPLER_ERROR_MESSAGE, ensure_poppler_available
 from app.services.file_service import (
     OUTPUT_DIR,
@@ -166,6 +167,7 @@ def image_to_text(
     if not is_supported_image(source):
         raise ValueError(f"Unsupported image format for OCR: {source.name}")
 
+    ensure_heif_support(source)
     ensure_tesseract_available()
     validate_ocr_language_available(language)
     with Image.open(source) as image:

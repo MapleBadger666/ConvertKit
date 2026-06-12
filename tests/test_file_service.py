@@ -22,6 +22,8 @@ def test_supported_image_extensions():
     assert is_supported_image("photo.jpeg")
     assert is_supported_image("photo.png")
     assert is_supported_image("photo.webp")
+    assert is_supported_image("photo.heic")
+    assert is_supported_image("photo.heif")
     assert not is_supported_image("photo.gif")
 
 

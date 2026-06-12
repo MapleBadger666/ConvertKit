@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = PROJECT_ROOT / "output"
 UPLOAD_DIR = PROJECT_ROOT / "uploads"
 
-SUPPORTED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
+SUPPORTED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "heic", "heif"}
 SUPPORTED_PDF_EXTENSIONS = {"pdf"}
 SUPPORTED_PPTX_EXTENSIONS = {"pptx"}
 SUPPORTED_VIDEO_EXTENSIONS = {"mp4", "mov", "mkv", "avi"}

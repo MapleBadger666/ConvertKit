@@ -6,6 +6,17 @@ All notable changes to ConvertKit/FileMorph will be documented in this file.
 
 - No changes yet.
 
+## v0.5.0
+
+- Added multi-file batch conversion.
+- Added Images to separate PDFs for one PDF per source image.
+- Fixed Images to one PDF batch handling so uploaded images are combined as one grouped conversion.
+- Added HEIC/HEIF image input support through `pillow-heif`.
+- Added simple job status with success/failure counts.
+- Added generated output file list.
+- Added one-click ZIP download for multiple successful outputs.
+- Added session-only conversion history.
+
 ## v0.4.2
 
 - Trimmed README for a cleaner GitHub landing page.
