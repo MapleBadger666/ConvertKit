@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: filemorph
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: STREAMLIT_SERVER_HEADLESS
+        value: "true"
+      - key: FILEMORPH_RUNTIME
+        value: online

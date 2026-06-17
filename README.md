@@ -1,42 +1,70 @@
 # FileMorph
 
-FileMorph is a local-only Streamlit file conversion toolkit for documents, images, OCR, media, and transcription. It is built for practical desktop workflows where files stay on your machine and generated outputs are saved to `output/`.
+FileMorph is a local-first file conversion toolkit with a macOS desktop launcher
+and online demo deployment support. It converts documents, images, PDFs, scanned
+files, presentations, audio, and video through a simple Streamlit interface.
+
+The project is designed for practical everyday workflows: batch uploads, clear
+conversion choices, local output folders, downloadable results, and deployment
+files for sharing a demo with other people.
 
 ## Preview
 
-![FileMorph v0.4 main UI](docs/screenshots/v0.4.0-main-ui.png)
+![FileMorph main UI](docs/screenshots/v0.4.0-main-ui.png)
 
 ![FileMorph transcription UI](docs/screenshots/v0.4.0-transcription-ui.png)
 
-## Local-Only Privacy Note
+## What It Can Do
 
-FileMorph runs locally. Uploaded files are written to the local `uploads/` directory, converted files are written to `output/`, and no cloud APIs or external upload services are used by the app.
-
-## Features
-
-| Group | Features |
+| Area | Supported workflows |
 | --- | --- |
-| Images | Batch JPG, JPEG, PNG, WEBP, HEIC, and HEIF conversion; combine images into one PDF or create one PDF per image. |
-| PDF | Convert PDF pages to PNG, extract selectable PDF text to TXT, convert PDF to DOCX. |
+| Images | Convert JPG, JPEG, PNG, WEBP, HEIC, and HEIF; combine images into one PDF; create one PDF per image. |
+| PDF | Convert pages to PNG, extract selectable text to TXT, and create DOCX drafts. |
 | OCR | Extract text from images and scanned PDFs with local Tesseract OCR. |
-| Office | Convert PPTX to PDF; convert PPTX to DOCX as editable outline, slide images, or mixed output. |
+| Office | Convert PPTX to PDF or DOCX, including slide-image and mixed-output modes. |
 | Media | Extract WAV or MP3 audio from video files. |
-| Transcription | Transcribe local audio and video files to timestamped TXT with faster-whisper. |
+| Transcription | Transcribe local audio or video to timestamped TXT with faster-whisper. |
+| Batch workflow | Upload multiple files, track progress, download individual outputs, or download a ZIP. |
 
-## Batch Workflow
+## Why This Project Is Useful
 
-FileMorph supports multi-file uploads for local, synchronous batch conversion. Images to one PDF combines many images into one PDF; Images to separate PDFs creates one PDF per image. Each run shows simple progress, a success/failure summary, an output file table, individual downloads, and a ZIP download when multiple files are generated. Recent conversion history is stored only in the current Streamlit session and can be cleared from the app.
+- **Local-first by default:** the Mac launcher binds to `127.0.0.1`, so private
+  files stay on your machine.
+- **Desktop-friendly:** build a Finder `.app` wrapper and add a desktop shortcut
+  with a generated FileMorph icon.
+- **Demo-ready:** deploy with Docker, Render, Railway, Fly.io, or Streamlit
+  Community Cloud.
+- **Practical conversion stack:** uses proven local tools such as Poppler,
+  Tesseract, LibreOffice, ffmpeg, and faster-whisper.
+- **Tested helper logic:** conversion routing, history, output metadata, previews,
+  and batch behavior are covered by unit tests.
 
-## Quick Start
+## Quick Start For Mac Users
 
-1. Clone and enter the project:
+Create the local app and desktop shortcut:
 
 ```bash
-git clone <repository-url>
-cd ConvertKit
+./scripts/install_macos_shortcut.sh
 ```
 
-2. Create an environment and install Python dependencies:
+Then double-click:
+
+```text
+~/Desktop/FileMorph.app
+```
+
+The desktop app starts FileMorph at:
+
+```text
+http://127.0.0.1:8501
+```
+
+If macOS blocks the app the first time, right-click `FileMorph.app`, choose
+Open, then confirm that you want to run it.
+
+## Local Developer Start
+
+Create a Python environment:
 
 ```bash
 python -m venv .venv
@@ -44,26 +72,66 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-3. Install the local system tools needed for the workflows you want. On macOS, the full toolchain is:
+Install the full macOS conversion toolchain:
 
 ```bash
 brew install poppler tesseract tesseract-lang ffmpeg
 brew install --cask libreoffice
 ```
 
-4. Run the app:
+Run the app:
 
 ```bash
 streamlit run app/main.py
 ```
-
-Then open the local Streamlit URL shown in the terminal.
 
 Run tests:
 
 ```bash
 python -m pytest -q
 ```
+
+## Online Demo Deployment
+
+FileMorph includes deployment files for hosted demos:
+
+- `Dockerfile` for Render, Railway, Fly.io, or a server that supports Docker.
+- `render.yaml` for Render Blueprint deployment.
+- `packages.txt` for Streamlit Community Cloud system packages.
+- `DEPLOYMENT.md` with detailed local and hosted deployment notes.
+
+Docker quick check:
+
+```bash
+docker build -t filemorph .
+docker run --rm -p 8501:8501 filemorph
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8501
+```
+
+Online mode sets `FILEMORPH_RUNTIME=online`, so the app shows a server-side
+upload privacy note instead of the local-only note.
+
+## Privacy Model
+
+Local mode:
+
+- Uploaded files are written to `uploads/`.
+- Converted files are written to `output/`.
+- The app binds to `127.0.0.1`.
+- No cloud API is used by the default local launcher.
+
+Online demo mode:
+
+- Uploaded files are stored on the remote server running the app.
+- Use demo/non-sensitive files unless you add authentication, cleanup jobs, and
+  storage controls.
+- Heavy workflows may be limited by the hosting plan's CPU, memory, disk, and
+  request timeout limits.
 
 ## System Dependencies
 
@@ -76,14 +144,31 @@ python -m pytest -q
 | ffmpeg | Video to Audio, Video to TXT, audio preprocessing | `brew install ffmpeg` |
 | faster-whisper | Audio to TXT, Video to TXT | `python -m pip install -r requirements.txt` |
 
+## Project Structure
+
+```text
+app/
+  converters/      Conversion implementations
+  services/        File saving, output naming, ZIP helpers
+  main.py          Streamlit UI and workflow orchestration
+scripts/
+  build_macos_app.sh         Build dist/FileMorph.app
+  create_macos_icon.py       Generate the macOS app icon
+  install_macos_shortcut.sh  Build the app and link it on the Desktop
+tests/             Unit tests for converters and UI helpers
+```
+
 ## Current Limitations
 
-- OCR and transcription quality depends on source clarity, noise, volume, language selection, and installed language data.
-- PPTX to DOCX layout preservation is best in Slide Images mode; editable Text Outline mode does not reproduce the original slide layout.
-- The first real transcription may download the selected Whisper model locally.
-- HEIC/HEIF input requires the Python dependency `pillow-heif`.
-- Long videos and large PDFs may take time to process.
-- Uploaded source files remain in `uploads/` and generated files remain in `output/` until manually removed.
+- OCR and transcription quality depends on source clarity, noise, volume,
+  language selection, and installed language data.
+- PPTX to DOCX layout preservation is best in Slide Images mode; editable Text
+  Outline mode does not reproduce the original slide layout.
+- The first transcription may download the selected Whisper model.
+- HEIC/HEIF input requires `pillow-heif`.
+- Long videos and large PDFs can take time to process.
+- Online deployments need extra cleanup/storage controls before handling
+  sensitive files.
 
 ## License
 

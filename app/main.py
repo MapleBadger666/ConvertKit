@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import os
 import sys
 from pathlib import Path
 from shutil import which
@@ -195,6 +196,37 @@ JOB_STATUS_PENDING = "pending"
 JOB_STATUS_RUNNING = "running"
 JOB_STATUS_SUCCESS = "success"
 JOB_STATUS_FAILED = "failed"
+RUNTIME_MODE = os.environ.get("FILEMORPH_RUNTIME", "local").strip().lower()
+
+
+def is_online_runtime() -> bool:
+    return RUNTIME_MODE in {"cloud", "demo", "online", "remote"}
+
+
+def app_intro_text() -> str:
+    if is_online_runtime():
+        return (
+            "FileMorph is a deployable file conversion toolkit for documents, images, "
+            "OCR, media, and transcription."
+        )
+
+    return (
+        "FileMorph is a local-first file conversion toolkit for documents, images, "
+        "OCR, media, and transcription."
+    )
+
+
+def runtime_privacy_text() -> str:
+    if is_online_runtime():
+        return (
+            "Online demo mode: uploaded files are processed on this server. "
+            "Use non-sensitive files unless the deployment has authentication and cleanup rules."
+        )
+
+    return (
+        "Local mode: files stay on this machine, uploads are saved to uploads/, "
+        "and generated outputs are saved to output/."
+    )
 
 
 def readable_error(exc: Exception) -> str:
@@ -858,12 +890,8 @@ def show_txt_preview(file_path: Path) -> None:
 def main() -> None:
     st.set_page_config(page_title="FileMorph", page_icon="FM", layout="centered")
     st.title("FileMorph")
-    st.caption(
-        "FileMorph is a local-only file conversion toolkit for documents, images, OCR, media, and transcription."
-    )
-    st.write(
-        "Runs locally. No cloud upload. Some conversions require system tools installed on this machine."
-    )
+    st.caption(app_intro_text())
+    st.write(runtime_privacy_text())
 
     with st.expander("System dependencies"):
         st.table(system_dependency_rows())

@@ -18,6 +18,7 @@ from app.main import (
     TRANSCRIPTION_MODEL_OPTIONS,
     TRANSCRIPTION_AUDIO_GUIDANCE,
     add_history_entry,
+    app_intro_text,
     clear_conversion_history,
     conversion_help_text,
     create_history_entry,
@@ -47,6 +48,7 @@ from app.main import (
     transcription_language_guidance,
     transcription_post_conversion_messages,
     txt_preview_for_file,
+    runtime_privacy_text,
 )
 
 
@@ -501,6 +503,11 @@ def test_conversion_help_text_covers_major_groups():
     assert "small for better accuracy" in conversion_help_text("transcription:audio_txt")
     assert "MP3 is smaller" in conversion_help_text("media:audio")
     assert "processed locally" in conversion_help_text("image:png")
+
+
+def test_default_runtime_copy_is_local_first():
+    assert "local-first" in app_intro_text()
+    assert "Local mode" in runtime_privacy_text()
 
 
 def test_get_allowed_upload_types_falls_back_to_all_supported_types():

@@ -1,0 +1,7 @@
+ffmpeg
+libgomp1
+libreoffice
+poppler-utils
+tesseract-ocr
+tesseract-ocr-chi-sim
+tesseract-ocr-chi-tra
