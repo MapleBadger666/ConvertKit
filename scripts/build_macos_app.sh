@@ -9,11 +9,15 @@ APP_DIR="$PROJECT_ROOT/dist/$APP_NAME.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
+BUNDLE_APP_ROOT="$RESOURCES_DIR/FileMorph"
+BUNDLE_SOURCE_ROOT="$BUNDLE_APP_ROOT/source"
+BUNDLE_VENV_DIR="$BUNDLE_APP_ROOT/.venv"
 EXECUTABLE="$MACOS_DIR/$APP_NAME"
 PLIST="$CONTENTS_DIR/Info.plist"
 ICON_FILE="$RESOURCES_DIR/FileMorph.icns"
 
-mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
+rm -rf "$APP_DIR"
+mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$BUNDLE_SOURCE_ROOT"
 
 ICON_PYTHON="python3"
 if [[ -x "$PROJECT_ROOT/.venv/bin/python" ]]; then
@@ -21,6 +25,44 @@ if [[ -x "$PROJECT_ROOT/.venv/bin/python" ]]; then
 fi
 
 "$ICON_PYTHON" "$PROJECT_ROOT/scripts/create_macos_icon.py" "$ICON_FILE"
+
+rsync -a \
+  --exclude ".DS_Store" \
+  --exclude ".git" \
+  --exclude ".pytest_cache" \
+  --exclude ".venv" \
+  --exclude "__pycache__" \
+  --exclude "*.pyc" \
+  --exclude "dist" \
+  --exclude "logs" \
+  --exclude "output" \
+  --exclude "uploads" \
+  "$PROJECT_ROOT/" "$BUNDLE_SOURCE_ROOT/"
+
+if [[ ! -x "$PROJECT_ROOT/.venv/bin/python" ]]; then
+  echo "A usable project .venv is required to build the macOS app." >&2
+  echo "Run: python -m venv .venv && .venv/bin/python -m pip install -r requirements-desktop.txt" >&2
+  exit 1
+fi
+
+if ! "$PROJECT_ROOT/.venv/bin/python" -c "import PIL.Image, streamlit, webview" >/dev/null 2>&1; then
+  echo "The project .venv is missing required desktop dependencies." >&2
+  echo "Run: .venv/bin/python -m pip install -r requirements-desktop.txt" >&2
+  exit 1
+fi
+
+echo "Bundling existing Python environment into $BUNDLE_VENV_DIR"
+rsync -a \
+  --exclude "__pycache__" \
+  --exclude "*.pyc" \
+  "$PROJECT_ROOT/.venv/" "$BUNDLE_VENV_DIR/"
+
+find "$BUNDLE_SOURCE_ROOT" -type d -name "__pycache__" -prune -exec rm -rf {} +
+find "$BUNDLE_SOURCE_ROOT" -type f -name "*.pyc" -delete
+if [[ -d "$BUNDLE_VENV_DIR" ]]; then
+  find "$BUNDLE_VENV_DIR" -type d -name "__pycache__" -prune -exec rm -rf {} +
+  find "$BUNDLE_VENV_DIR" -type f -name "*.pyc" -delete
+fi
 
 cat > "$PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -61,8 +103,19 @@ cat > "$EXECUTABLE" <<LAUNCHER
 
 set -euo pipefail
 
-PROJECT_ROOT="$PROJECT_ROOT"
-LAUNCHER="\$PROJECT_ROOT/FileMorph.command"
+APP_ROOT="\$(cd "\$(dirname "\$0")/../Resources/FileMorph/source" && pwd)"
+BUNDLE_VENV_DIR="\$(cd "\$(dirname "\$0")/../Resources/FileMorph" && pwd)/.venv"
+DATA_ROOT="\${FILEMORPH_DATA_DIR:-\$HOME/Library/Application Support/FileMorph}"
+VENV_DIR="\$BUNDLE_VENV_DIR"
+PYTHON="\$VENV_DIR/bin/python"
+APP_ENTRY="\$APP_ROOT/desktop/main.py"
+LOG_DIR="\$DATA_ROOT/logs"
+LOG_FILE="\$LOG_DIR/filemorph.log"
+
+export FILEMORPH_DATA_DIR="\$DATA_ROOT"
+export FILEMORPH_RUNTIME="local"
+export STREAMLIT_SERVER_HEADLESS="true"
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:\$PATH"
 
 show_error() {
   local message="\$1"
@@ -72,21 +125,26 @@ show_error() {
   echo "\$message"
 }
 
-if [[ ! -x "\$LAUNCHER" ]]; then
-  show_error "FileMorph.command was not found or is not executable. Rebuild the app wrapper from the FileMorph project folder."
+python_environment_usable() {
+  if [[ ! -x "\$PYTHON" ]]; then
+    return 1
+  fi
+
+  "\$PYTHON" -c "import PIL.Image, streamlit, webview" >/dev/null 2>&1
+}
+
+mkdir -p "\$DATA_ROOT/uploads" "\$DATA_ROOT/output" "\$LOG_DIR"
+exec >> "\$LOG_FILE" 2>&1
+
+cd "\$APP_ROOT"
+if ! python_environment_usable; then
+  show_error "FileMorph's bundled runtime is missing or unusable. Rebuild and reinstall FileMorph.app."
   exit 1
 fi
 
-osascript - "\$PROJECT_ROOT" <<'APPLESCRIPT'
-on run argv
-  set projectRoot to item 1 of argv
-  set quotedRoot to quoted form of projectRoot
-  tell application "Terminal"
-    activate
-    do script "cd " & quotedRoot & " && ./FileMorph.command"
-  end tell
-end run
-APPLESCRIPT
+echo "Using bundled Python environment at \$BUNDLE_VENV_DIR"
+
+exec "\$PYTHON" "\$APP_ENTRY"
 LAUNCHER
 
 chmod +x "$EXECUTABLE"

@@ -153,7 +153,11 @@ def build_icns(output_path: Path) -> None:
             )
         except subprocess.CalledProcessError:
             tiff_path = Path(tmpdir) / "FileMorph.tiff"
-            base.save(tiff_path)
+            subprocess.run(
+                ["sips", "-s", "format", "tiff", str(png_output), "--out", str(tiff_path)],
+                check=True,
+                stdout=subprocess.DEVNULL,
+            )
             subprocess.run(["tiff2icns", str(tiff_path), str(output_path)], check=True)
 
 

@@ -1,8 +1,8 @@
 # FileMorph
 
-FileMorph is a local-first file conversion toolkit with a macOS desktop launcher
-and online demo deployment support. It converts documents, images, PDFs, scanned
-files, presentations, audio, and video through a simple Streamlit interface.
+FileMorph is a local-first file conversion toolkit with a native macOS desktop
+app and online demo deployment support. It converts documents, images, PDFs,
+scanned files, presentations, audio, and video.
 
 The project is designed for practical everyday workflows: batch uploads, clear
 conversion choices, local output folders, downloadable results, and deployment
@@ -28,10 +28,11 @@ files for sharing a demo with other people.
 
 ## Why This Project Is Useful
 
-- **Local-first by default:** the Mac launcher binds to `127.0.0.1`, so private
-  files stay on your machine.
-- **Desktop-friendly:** build a Finder `.app` wrapper and add a desktop shortcut
-  with a generated FileMorph icon.
+- **Local Mac app:** the Mac build starts Streamlit as an internal localhost
+  service and embeds it in a FileMorph WebView window. It does not open Safari,
+  Chrome, Edge, or the system browser.
+- **Local-first by default:** private files stay on your machine in the desktop
+  build.
 - **Demo-ready:** deploy with Docker, Render, Railway, Fly.io, or Streamlit
   Community Cloud.
 - **Practical conversion stack:** uses proven local tools such as Poppler,
@@ -41,26 +42,57 @@ files for sharing a demo with other people.
 
 ## Quick Start For Mac Users
 
-Create the local app and desktop shortcut:
+Create the desktop runtime, then install the local Mac app:
 
 ```bash
-./scripts/install_macos_shortcut.sh
+python -m venv .venv
+.venv/bin/python -m pip install -r requirements-desktop.txt
+```
+
+Install into `/Applications`:
+
+```bash
+./scripts/install_macos_app.sh
 ```
 
 Then double-click:
 
 ```text
-~/Desktop/FileMorph.app
-```
-
-The desktop app starts FileMorph at:
-
-```text
-http://127.0.0.1:8501
+/Applications/FileMorph.app
 ```
 
 If macOS blocks the app the first time, right-click `FileMorph.app`, choose
 Open, then confirm that you want to run it.
+
+The installed app carries a source snapshot inside:
+
+```text
+FileMorph.app/Contents/Resources/FileMorph/source/
+```
+
+The installer bundles the project `.venv` inside the app. The bundled runtime
+must include `pywebview`, so the app can open its own macOS window offline:
+
+```text
+FileMorph.app/Contents/Resources/FileMorph/.venv/
+```
+
+Its runtime files live outside the app bundle in:
+
+```text
+~/Library/Application Support/FileMorph/
+```
+
+That folder contains `uploads/`, `output/`, and logs. The app does not install
+key dependencies on first launch.
+
+The desktop app and the online demo share the same UI entry point:
+`app/main.py`. The difference is where it runs: locally inside
+`FileMorph.app`, or remotely on a demo server.
+
+GitHub uploads should include the source code and documentation, but not local
+runtime artifacts such as `.venv/`, `dist/`, `uploads/`, `output/`, or `logs/`.
+Those paths are ignored by `.gitignore`.
 
 ## Local Developer Start
 
@@ -72,6 +104,12 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
+For macOS desktop development, install the desktop runtime:
+
+```bash
+python -m pip install -r requirements-desktop.txt
+```
+
 Install the full macOS conversion toolchain:
 
 ```bash
@@ -79,7 +117,7 @@ brew install poppler tesseract tesseract-lang ffmpeg
 brew install --cask libreoffice
 ```
 
-Run the app:
+Run the web demo locally:
 
 ```bash
 streamlit run app/main.py
@@ -150,11 +188,13 @@ Online demo mode:
 app/
   converters/      Conversion implementations
   services/        File saving, output naming, ZIP helpers
-  main.py          Streamlit UI and workflow orchestration
+  main.py          Streamlit web demo UI and workflow orchestration
+desktop/
+  main.py          Local WebView launcher for the shared Streamlit UI
 scripts/
   build_macos_app.sh         Build dist/FileMorph.app
   create_macos_icon.py       Generate the macOS app icon
-  install_macos_shortcut.sh  Build the app and link it on the Desktop
+  install_macos_app.sh       Install FileMorph into /Applications
 tests/             Unit tests for converters and UI helpers
 ```
 
@@ -169,6 +209,8 @@ tests/             Unit tests for converters and UI helpers
 - Long videos and large PDFs can take time to process.
 - Online deployments need extra cleanup/storage controls before handling
   sensitive files.
+- The macOS app is a local WebView wrapper around the shared Streamlit UI, not a
+  browser tab and not the online deployment.
 
 ## License
 

@@ -7,26 +7,68 @@ This guide covers two ways to present FileMorph:
 
 ## Local Mac App
 
-Create or refresh the macOS app wrapper and Desktop shortcut:
+Create the desktop runtime:
 
 ```bash
-./scripts/install_macos_shortcut.sh
+python -m venv .venv
+.venv/bin/python -m pip install -r requirements-desktop.txt
+```
+
+Install FileMorph into `/Applications`:
+
+```bash
+./scripts/install_macos_app.sh
 ```
 
 Open:
 
 ```text
-~/Desktop/FileMorph.app
+/Applications/FileMorph.app
 ```
 
-The app opens a local Streamlit service at:
+The generated `.app` bundles the FileMorph project source snapshot inside:
 
 ```text
-http://127.0.0.1:8501
+Contents/Resources/FileMorph/source/
 ```
 
-This is still a local app experience: the `.app` is the shortcut, Terminal keeps
-the local Streamlit process alive, and the browser displays the UI.
+The build requires a usable project `.venv` with the desktop dependencies
+installed. It bundles that runtime inside:
+
+```text
+Contents/Resources/FileMorph/.venv/
+```
+
+Runtime state is stored outside the bundle in:
+
+```text
+~/Library/Application Support/FileMorph/
+```
+
+That folder contains `uploads/`, `output/`, and logs. This means
+`/Applications/FileMorph.app` does not depend on the original project folder
+after installation and does not install key dependencies on first launch.
+
+The local app starts `desktop/main.py`, launches the same Streamlit UI used by
+the online demo as an internal localhost service, and embeds it in a FileMorph
+WebView window. It does not open Safari, Chrome, Edge, or the system default
+browser. Closing the FileMorph window stops the local Streamlit service.
+
+Do not upload local runtime folders to GitHub. `.gitignore` excludes `.venv/`,
+`dist/`, `uploads/`, `output/`, `logs/`, Python caches, and `.DS_Store`.
+
+## Web Demo
+
+The Streamlit interface remains available for online demos:
+
+```bash
+streamlit run app/main.py
+```
+
+Use the hosted Streamlit version for public previews and the `/Applications`
+desktop app for private local work. Both modes render `app/main.py`, but the
+macOS app is a local WebView wrapper, not a browser page and not the online
+deployment.
 
 ## Docker
 
