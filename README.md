@@ -42,12 +42,16 @@ files for sharing a demo with other people.
 
 ## Quick Start For Mac Users
 
-For most Mac users, download one of the release installers from GitHub Releases:
+For most Mac users, download one of the macOS installers from GitHub Releases:
 
 - `FileMorph-macOS.dmg`: open the disk image, then drag `FileMorph.app` to
   `Applications`.
 - `FileMorph-Installer.pkg`: double-click the installer package and follow the
   macOS installer.
+
+Do not download `Source code (zip)` or `Source code (tar.gz)` if you just want
+to install the app. Those files are for developers and do not contain the built
+macOS application.
 
 Both install the same local WebView app at:
 
@@ -84,6 +88,13 @@ Build release installers:
 ```bash
 ./scripts/build_macos_dmg.sh
 ./scripts/build_macos_pkg.sh
+```
+
+Run the full macOS release build and verification flow:
+
+```bash
+./scripts/release_macos.sh v0.6.1
+./scripts/verify_release_assets.sh
 ```
 
 These create release artifacts in `dist/`:
@@ -225,6 +236,8 @@ scripts/
   build_macos_app.sh         Build dist/FileMorph.app
   build_macos_dmg.sh         Build dist/FileMorph-macOS.dmg
   build_macos_pkg.sh         Build dist/FileMorph-Installer.pkg
+  release_macos.sh           Run tests, build installers, and print checksums
+  verify_release_assets.sh   Verify release artifacts before upload
   create_macos_icon.py       Generate the macOS app icon
   install_macos_app.sh       Install FileMorph into /Applications
 tests/             Unit tests for converters and UI helpers

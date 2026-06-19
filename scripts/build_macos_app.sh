@@ -6,6 +6,7 @@ export COPYFILE_DISABLE=1
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 APP_NAME="FileMorph"
+APP_VERSION="${FILEMORPH_VERSION:-0.5.0}"
 APP_DIR="$PROJECT_ROOT/dist/$APP_NAME.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
@@ -90,7 +91,7 @@ cat > "$PLIST" <<PLIST
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.5.0</string>
+  <string>$APP_VERSION</string>
   <key>CFBundleVersion</key>
   <string>1</string>
   <key>LSMinimumSystemVersion</key>

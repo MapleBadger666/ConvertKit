@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import fcntl
 import os
 import signal
 import socket
@@ -21,11 +22,13 @@ DATA_DIR = Path(os.environ["FILEMORPH_DATA_DIR"])
 LOG_DIR = DATA_DIR / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 DESKTOP_LOG = LOG_DIR / "filemorph-desktop-ui.log"
+LOCK_FILE = DATA_DIR / "filemorph.lock"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 STREAMLIT_ENTRY = PROJECT_ROOT / "app" / "main.py"
 ACTIVE_PROCESS: subprocess.Popen | None = None
 SHUTTING_DOWN = False
+LOCK_HANDLE = None
 WATCHDOG_CODE = r"""
 import os
 import signal
@@ -75,6 +78,26 @@ def log_event(message: str) -> None:
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     with DESKTOP_LOG.open("a", encoding="utf-8") as log:
         log.write(f"[{timestamp}] {message}\n")
+
+
+def acquire_single_instance_lock():
+    LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    lock_handle = LOCK_FILE.open("w", encoding="utf-8")
+    try:
+        fcntl.flock(lock_handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        lock_handle.close()
+        raise RuntimeError(
+            "FileMorph is already running. "
+            "Bring the existing FileMorph window to the front, or quit it before opening a new one."
+        ) from exc
+
+    lock_handle.seek(0)
+    lock_handle.truncate()
+    lock_handle.write(str(os.getpid()))
+    lock_handle.flush()
+    log_event(f"Acquired single-instance lock at {LOCK_FILE}")
+    return lock_handle
 
 
 def find_available_port() -> int:
@@ -210,7 +233,7 @@ def open_in_webview(url: str) -> None:
 
 
 def main() -> int:
-    global ACTIVE_PROCESS
+    global ACTIVE_PROCESS, LOCK_HANDLE
     process: subprocess.Popen | None = None
     try:
         install_shutdown_handlers()
@@ -225,6 +248,8 @@ def main() -> int:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         (DATA_DIR / "uploads").mkdir(exist_ok=True)
         (DATA_DIR / "output").mkdir(exist_ok=True)
+        log_event(f"FileMorph log path: {DESKTOP_LOG}")
+        LOCK_HANDLE = acquire_single_instance_lock()
 
         port = find_available_port()
         url = f"http://127.0.0.1:{port}"
@@ -246,6 +271,11 @@ def main() -> int:
     finally:
         stop_streamlit(process)
         ACTIVE_PROCESS = None
+        if LOCK_HANDLE is not None:
+            with contextlib.suppress(Exception):
+                fcntl.flock(LOCK_HANDLE, fcntl.LOCK_UN)
+                LOCK_HANDLE.close()
+            LOCK_HANDLE = None
         log_event("FileMorph desktop launcher exited")
 
 

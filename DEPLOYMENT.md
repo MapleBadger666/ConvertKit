@@ -14,6 +14,14 @@ For ordinary users, publish macOS installers through GitHub Releases:
 - `FileMorph-Installer.pkg`: installs `FileMorph.app` directly into
   `/Applications`.
 
+Make the `.dmg` and `.pkg` the primary downloads. GitHub's automatic
+`Source code (zip)` and `Source code (tar.gz)` files are not installers; they are
+for developers who want to build from source.
+
+Unsigned builds may trigger macOS Gatekeeper. Tell users to right-click
+`FileMorph.app`, choose Open, then confirm. A signed and notarized build can
+remove that extra step later.
+
 Source users can build those installers locally. First create the desktop
 runtime:
 
@@ -37,11 +45,22 @@ Open:
 Build release artifacts:
 
 ```bash
-./scripts/build_macos_dmg.sh
-./scripts/build_macos_pkg.sh
+./scripts/release_macos.sh v0.6.1
 ```
 
-The scripts first run `scripts/build_macos_app.sh`, then create:
+The release script runs tests, validates shell script syntax, builds the app,
+creates both installers, checks artifact sizes, and prints SHA256 checksums. It
+does not commit, push, tag, or create a GitHub Release.
+
+For targeted builds, use:
+
+```bash
+./scripts/build_macos_dmg.sh
+./scripts/build_macos_pkg.sh
+./scripts/verify_release_assets.sh
+```
+
+The build scripts first run `scripts/build_macos_app.sh`, then create:
 
 ```text
 dist/FileMorph.app
