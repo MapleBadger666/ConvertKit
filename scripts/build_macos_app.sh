@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -euo pipefail
+export COPYFILE_DISABLE=1
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -59,9 +60,11 @@ rsync -a \
 
 find "$BUNDLE_SOURCE_ROOT" -type d -name "__pycache__" -prune -exec rm -rf {} +
 find "$BUNDLE_SOURCE_ROOT" -type f -name "*.pyc" -delete
+find "$APP_DIR" -name "._*" -delete
 if [[ -d "$BUNDLE_VENV_DIR" ]]; then
   find "$BUNDLE_VENV_DIR" -type d -name "__pycache__" -prune -exec rm -rf {} +
   find "$BUNDLE_VENV_DIR" -type f -name "*.pyc" -delete
+  find "$BUNDLE_VENV_DIR" -name "._*" -delete
 fi
 
 cat > "$PLIST" <<PLIST

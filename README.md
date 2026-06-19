@@ -42,7 +42,25 @@ files for sharing a demo with other people.
 
 ## Quick Start For Mac Users
 
-Create the desktop runtime, then install the local Mac app:
+For most Mac users, download one of the release installers from GitHub Releases:
+
+- `FileMorph-macOS.dmg`: open the disk image, then drag `FileMorph.app` to
+  `Applications`.
+- `FileMorph-Installer.pkg`: double-click the installer package and follow the
+  macOS installer.
+
+Both install the same local WebView app at:
+
+```text
+/Applications/FileMorph.app
+```
+
+If macOS blocks the app the first time, right-click `FileMorph.app`, choose
+Open, then confirm that you want to run it.
+
+## Build From Source
+
+Source users can create the desktop runtime and install the local Mac app:
 
 ```bash
 python -m venv .venv
@@ -61,8 +79,19 @@ Then double-click:
 /Applications/FileMorph.app
 ```
 
-If macOS blocks the app the first time, right-click `FileMorph.app`, choose
-Open, then confirm that you want to run it.
+Build release installers:
+
+```bash
+./scripts/build_macos_dmg.sh
+./scripts/build_macos_pkg.sh
+```
+
+These create release artifacts in `dist/`:
+
+```text
+dist/FileMorph-macOS.dmg
+dist/FileMorph-Installer.pkg
+```
 
 The installed app carries a source snapshot inside:
 
@@ -92,7 +121,8 @@ The desktop app and the online demo share the same UI entry point:
 
 GitHub uploads should include the source code and documentation, but not local
 runtime artifacts such as `.venv/`, `dist/`, `uploads/`, `output/`, or `logs/`.
-Those paths are ignored by `.gitignore`.
+Those paths are ignored by `.gitignore`. Publish `.dmg` and `.pkg` files as
+GitHub Release artifacts, not as committed repository files.
 
 ## Local Developer Start
 
@@ -193,6 +223,8 @@ desktop/
   main.py          Local WebView launcher for the shared Streamlit UI
 scripts/
   build_macos_app.sh         Build dist/FileMorph.app
+  build_macos_dmg.sh         Build dist/FileMorph-macOS.dmg
+  build_macos_pkg.sh         Build dist/FileMorph-Installer.pkg
   create_macos_icon.py       Generate the macOS app icon
   install_macos_app.sh       Install FileMorph into /Applications
 tests/             Unit tests for converters and UI helpers

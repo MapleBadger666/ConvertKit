@@ -7,7 +7,15 @@ This guide covers two ways to present FileMorph:
 
 ## Local Mac App
 
-Create the desktop runtime:
+For ordinary users, publish macOS installers through GitHub Releases:
+
+- `FileMorph-macOS.dmg`: contains `FileMorph.app` and an `Applications`
+  shortcut so users can drag the app into `/Applications`.
+- `FileMorph-Installer.pkg`: installs `FileMorph.app` directly into
+  `/Applications`.
+
+Source users can build those installers locally. First create the desktop
+runtime:
 
 ```bash
 python -m venv .venv
@@ -24,6 +32,21 @@ Open:
 
 ```text
 /Applications/FileMorph.app
+```
+
+Build release artifacts:
+
+```bash
+./scripts/build_macos_dmg.sh
+./scripts/build_macos_pkg.sh
+```
+
+The scripts first run `scripts/build_macos_app.sh`, then create:
+
+```text
+dist/FileMorph.app
+dist/FileMorph-macOS.dmg
+dist/FileMorph-Installer.pkg
 ```
 
 The generated `.app` bundles the FileMorph project source snapshot inside:
@@ -56,6 +79,8 @@ browser. Closing the FileMorph window stops the local Streamlit service.
 
 Do not upload local runtime folders to GitHub. `.gitignore` excludes `.venv/`,
 `dist/`, `uploads/`, `output/`, `logs/`, Python caches, and `.DS_Store`.
+Commit the build scripts and docs, then attach `.dmg` and `.pkg` as release
+artifacts instead of committing them to the repository.
 
 ## Web Demo
 
