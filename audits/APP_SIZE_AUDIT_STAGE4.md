@@ -1,6 +1,6 @@
 # FileMorph Stage 4.1 App Size Audit
 
-Generated: 2026-06-20 18:29:28 CST
+Generated: 2026-06-20 20:22:52 CST
 
 Current profile: lite
 
@@ -32,7 +32,7 @@ Current profile: lite
 | dist/FileMorph.app/Contents/Resources/FileMorph | 301M | 315813888 |
 | dist/FileMorph.app/Contents/Resources/FileMorph/source | 160K | 163840 |
 | dist/FileMorph.app/Contents/Resources/FileMorph/.venv | 301M | 315645952 |
-| dist/FileMorph-macOS.dmg | 131M | 137498624 |
+| dist/FileMorph-macOS.dmg | 130M | 135880704 |
 | dist/FileMorph-Installer.pkg | 84M | 88449024 |
 
 ## Largest Files And Directories
