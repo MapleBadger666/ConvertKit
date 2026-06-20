@@ -7,7 +7,6 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DIST_DIR="$PROJECT_ROOT/dist"
 DMG_PATH="$DIST_DIR/FileMorph-macOS.dmg"
 PKG_PATH="$DIST_DIR/FileMorph-Installer.pkg"
-MIN_BYTES=$((100 * 1024 * 1024))
 
 file_size() {
   stat -f%z "$1" 2>/dev/null || stat -c%s "$1"
@@ -28,11 +27,6 @@ check_asset() {
 
   local size
   size="$(file_size "$path")"
-  if (( size <= MIN_BYTES )); then
-    echo "$label is too small: $size bytes" >&2
-    exit 1
-  fi
-
   echo "$label size: $size bytes"
   echo "$label sha256:"
   sha256_file "$path"

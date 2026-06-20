@@ -53,6 +53,12 @@ Do not download `Source code (zip)` or `Source code (tar.gz)` if you just want
 to install the app. Those files are for developers and do not contain the built
 macOS application.
 
+GitHub source archives contain the full development repository. The macOS
+Release installers are slimmer runtime packages: they include the app code,
+desktop launcher, Streamlit config, requirements metadata, and bundled Python
+runtime needed to run `FileMorph.app`, but they do not include development
+folders such as `tests/`, `docs/`, or `audits/`.
+
 Both install the same local WebView app at:
 
 ```text
@@ -93,8 +99,9 @@ Build release installers:
 Run the full macOS release build and verification flow:
 
 ```bash
-./scripts/release_macos.sh v0.6.1
+./scripts/release_macos.sh v0.7.0-dev
 ./scripts/verify_release_assets.sh
+./scripts/audit_macos_app_size.sh
 ```
 
 These create release artifacts in `dist/`:
@@ -150,6 +157,10 @@ GitHub uploads should include the source code and documentation, but not local
 runtime artifacts such as `.venv/`, `dist/`, `uploads/`, `output/`, or `logs/`.
 Those paths are ignored by `.gitignore`. Publish `.dmg` and `.pkg` files as
 GitHub Release artifacts, not as committed repository files.
+
+`scripts/build_macos_app.sh` intentionally copies only runtime files into
+`dist/FileMorph.app`; it does not delete or alter the development files in the
+repository.
 
 ## Local Developer Start
 
@@ -255,6 +266,7 @@ scripts/
   build_macos_dmg.sh         Build dist/FileMorph-macOS.dmg
   build_macos_pkg.sh         Build dist/FileMorph-Installer.pkg
   release_macos.sh           Run tests, build installers, and print checksums
+  audit_macos_app_size.sh    Report packaged app, runtime, DMG, and PKG sizes
   verify_release_assets.sh   Verify release artifacts before upload
   create_macos_icon.py       Generate the macOS app icon
   install_macos_app.sh       Install FileMorph into /Applications

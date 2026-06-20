@@ -11,6 +11,7 @@ APP_PATH="$DIST_DIR/$APP_NAME.app"
 PKG_PATH="$DIST_DIR/FileMorph-Installer.pkg"
 IDENTIFIER="local.filemorph.desktop"
 VERSION="${FILEMORPH_VERSION:-0.7.0}"
+PKG_VERSION="${VERSION%%-*}"
 PKG_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/filemorph-pkg.XXXXXX")"
 
 cleanup() {
@@ -30,7 +31,7 @@ pkgbuild \
   --root "$PKG_ROOT" \
   --install-location / \
   --identifier "$IDENTIFIER" \
-  --version "$VERSION" \
+  --version "$PKG_VERSION" \
   "$PKG_PATH"
 
 echo "Created $PKG_PATH"

@@ -7,6 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 APP_NAME="FileMorph"
 APP_VERSION="${FILEMORPH_VERSION:-0.7.0}"
+PLIST_VERSION="${APP_VERSION%%-*}"
 BUILD_CHANNEL="${FILEMORPH_BUILD_CHANNEL:-local}"
 APP_DIR="$PROJECT_ROOT/dist/$APP_NAME.app"
 CONTENTS_DIR="$APP_DIR/Contents"
@@ -29,18 +30,32 @@ fi
 
 "$ICON_PYTHON" "$PROJECT_ROOT/scripts/create_macos_icon.py" "$ICON_FILE"
 
+echo "Copying runtime source files into $BUNDLE_SOURCE_ROOT"
 rsync -a \
   --exclude ".DS_Store" \
-  --exclude ".git" \
-  --exclude ".pytest_cache" \
-  --exclude ".venv" \
   --exclude "__pycache__" \
   --exclude "*.pyc" \
-  --exclude "dist" \
-  --exclude "logs" \
-  --exclude "output" \
-  --exclude "uploads" \
-  "$PROJECT_ROOT/" "$BUNDLE_SOURCE_ROOT/"
+  --exclude "*.pyo" \
+  "$PROJECT_ROOT/app/" "$BUNDLE_SOURCE_ROOT/app/"
+
+rsync -a \
+  --exclude ".DS_Store" \
+  --exclude "__pycache__" \
+  --exclude "*.pyc" \
+  --exclude "*.pyo" \
+  "$PROJECT_ROOT/desktop/" "$BUNDLE_SOURCE_ROOT/desktop/"
+
+if [[ -d "$PROJECT_ROOT/.streamlit" ]]; then
+  rsync -a \
+    --exclude ".DS_Store" \
+    "$PROJECT_ROOT/.streamlit/" "$BUNDLE_SOURCE_ROOT/.streamlit/"
+fi
+
+for runtime_file in requirements.txt requirements-desktop.txt README.md LICENSE; do
+  if [[ -f "$PROJECT_ROOT/$runtime_file" ]]; then
+    rsync -a "$PROJECT_ROOT/$runtime_file" "$BUNDLE_SOURCE_ROOT/$runtime_file"
+  fi
+done
 
 if [[ ! -x "$PROJECT_ROOT/.venv/bin/python" ]]; then
   echo "A usable project .venv is required to build the macOS app." >&2
@@ -58,15 +73,29 @@ echo "Bundling existing Python environment into $BUNDLE_VENV_DIR"
 rsync -a \
   --exclude "__pycache__" \
   --exclude "*.pyc" \
+  --exclude "*.pyo" \
+  --exclude ".pytest_cache" \
+  --exclude ".mypy_cache" \
+  --exclude ".ruff_cache" \
+  --exclude "pip/cache" \
   "$PROJECT_ROOT/.venv/" "$BUNDLE_VENV_DIR/"
 
 find "$BUNDLE_SOURCE_ROOT" -type d -name "__pycache__" -prune -exec rm -rf {} +
 find "$BUNDLE_SOURCE_ROOT" -type f -name "*.pyc" -delete
+find "$BUNDLE_SOURCE_ROOT" -type f -name "*.pyo" -delete
 find "$APP_DIR" -name "._*" -delete
 if [[ -d "$BUNDLE_VENV_DIR" ]]; then
   find "$BUNDLE_VENV_DIR" -type d -name "__pycache__" -prune -exec rm -rf {} +
+  find "$BUNDLE_VENV_DIR" -type d -name ".pytest_cache" -prune -exec rm -rf {} +
+  find "$BUNDLE_VENV_DIR" -type d -name ".mypy_cache" -prune -exec rm -rf {} +
+  find "$BUNDLE_VENV_DIR" -type d -name ".ruff_cache" -prune -exec rm -rf {} +
+  find "$BUNDLE_VENV_DIR" -type d -name "*.dSYM" -prune -exec rm -rf {} +
+  find "$BUNDLE_VENV_DIR" -type d \( -name tests -o -name test \) -prune -exec rm -rf {} +
   find "$BUNDLE_VENV_DIR" -type f -name "*.pyc" -delete
+  find "$BUNDLE_VENV_DIR" -type f -name "*.pyo" -delete
+  find "$BUNDLE_VENV_DIR" -type f -name "*.map" -delete
   find "$BUNDLE_VENV_DIR" -name "._*" -delete
+  rm -rf "$BUNDLE_VENV_DIR/share/jupyter" "$BUNDLE_VENV_DIR/share/man"
 fi
 
 cat > "$PLIST" <<PLIST
@@ -92,7 +121,7 @@ cat > "$PLIST" <<PLIST
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>$APP_VERSION</string>
+  <string>$PLIST_VERSION</string>
   <key>CFBundleVersion</key>
   <string>1</string>
   <key>LSMinimumSystemVersion</key>

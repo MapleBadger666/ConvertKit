@@ -18,6 +18,11 @@ Make the `.dmg` and `.pkg` the primary downloads. GitHub's automatic
 `Source code (zip)` and `Source code (tar.gz)` files are not installers; they are
 for developers who want to build from source.
 
+The GitHub source archives contain the full development repository, including
+tests, docs, and audit notes. The macOS Release installers contain only runtime
+files needed by `FileMorph.app`: the app package, desktop WebView launcher,
+Streamlit config, requirements metadata, and bundled Python environment.
+
 Unsigned builds may trigger macOS Gatekeeper. Tell users to right-click
 `FileMorph.app`, choose Open, then confirm. A signed and notarized build can
 remove that extra step later.
@@ -45,7 +50,7 @@ Open:
 Build release artifacts:
 
 ```bash
-./scripts/release_macos.sh v0.6.1
+./scripts/release_macos.sh v0.7.0-dev
 ```
 
 The release script runs tests, validates shell script syntax, builds the app,
@@ -57,6 +62,7 @@ For targeted builds, use:
 ```bash
 ./scripts/build_macos_dmg.sh
 ./scripts/build_macos_pkg.sh
+./scripts/audit_macos_app_size.sh
 ./scripts/verify_release_assets.sh
 ```
 
@@ -73,6 +79,12 @@ The generated `.app` bundles the FileMorph project source snapshot inside:
 ```text
 Contents/Resources/FileMorph/source/
 ```
+
+That packaged source directory is a runtime subset, not a full repository copy.
+It includes the Python app, desktop launcher, Streamlit config, requirements
+metadata, and lightweight user-facing docs. It excludes development-only folders
+such as `tests/`, `docs/`, `audits/`, `.github/`, `dist/`, `.venv/`, `uploads/`,
+`output/`, and `logs/`.
 
 The build requires a usable project `.venv` with the desktop dependencies
 installed. It bundles that runtime inside:
@@ -120,6 +132,9 @@ Do not upload local runtime folders to GitHub. `.gitignore` excludes `.venv/`,
 `dist/`, `uploads/`, `output/`, `logs/`, Python caches, and `.DS_Store`.
 Commit the build scripts and docs, then attach `.dmg` and `.pkg` as release
 artifacts instead of committing them to the repository.
+
+Use `scripts/audit_macos_app_size.sh` after a build to record bundle, runtime,
+DMG, and PKG sizes in `audits/APP_SIZE_AUDIT_STAGE4.md`.
 
 ## Web Demo
 
