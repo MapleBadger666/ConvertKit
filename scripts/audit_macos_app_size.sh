@@ -9,6 +9,7 @@ APP_PATH="$DIST_DIR/FileMorph.app"
 BUNDLE_ROOT="$APP_PATH/Contents/Resources/FileMorph"
 SOURCE_PATH="$BUNDLE_ROOT/source"
 VENV_PATH="$BUNDLE_ROOT/.venv"
+PROFILE_PATH="$BUNDLE_ROOT/build-profile.txt"
 DMG_PATH="$DIST_DIR/FileMorph-macOS.dmg"
 PKG_PATH="$DIST_DIR/FileMorph-Installer.pkg"
 AUDIT_DIR="$PROJECT_ROOT/audits"
@@ -40,12 +41,22 @@ bytes_or_zero() {
   fi
 }
 
+current_profile() {
+  if [[ -f "$PROFILE_PATH" ]]; then
+    tr -d '\n' < "$PROFILE_PATH"
+  else
+    echo "${FILEMORPH_BUILD_PROFILE:-unknown}"
+  fi
+}
+
 write_report() {
   mkdir -p "$AUDIT_DIR"
   {
-    echo "# FileMorph Stage 4 App Size Audit"
+    echo "# FileMorph Stage 4.1 App Size Audit"
     echo
     echo "Generated: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+    echo
+    echo "Current profile: $(current_profile)"
     echo
     echo "## Baseline Before Stage 4"
     echo
@@ -57,6 +68,15 @@ write_report() {
     echo "| dist/FileMorph.app/Contents/Resources/FileMorph/.venv | 699M |"
     echo "| dist/FileMorph-macOS.dmg | 295M |"
     echo "| dist/FileMorph-Installer.pkg | 216M |"
+    echo
+    echo "## Stage 4 Full Runtime Baseline"
+    echo
+    echo "| Artifact | Size |"
+    echo "| --- | ---: |"
+    echo "| dist/FileMorph.app | 610M |"
+    echo "| dist/FileMorph.app/Contents/Resources/FileMorph/.venv | 610M |"
+    echo "| dist/FileMorph-macOS.dmg | 261M |"
+    echo "| dist/FileMorph-Installer.pkg | 195M |"
     echo
     echo "## Current Build"
     echo
@@ -91,7 +111,7 @@ write_report() {
     echo
     echo "## Notes"
     echo
-    echo "- Stage 4 optimizes only the packaged app contents under dist/FileMorph.app."
+    echo "- Stage 4.1 optimizes only the packaged app contents under dist/FileMorph.app."
     echo "- Repository source folders such as tests/, docs/, and audits/ are not deleted."
     echo "- dist/, .venv/, uploads/, output/, logs/, .dmg, and .pkg artifacts remain untracked release/build outputs."
   } > "$REPORT_PATH"

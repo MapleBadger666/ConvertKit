@@ -1,0 +1,4 @@
+-r requirements-runtime-core.txt
+pdf2docx>=0.5.8
+pytesseract>=0.3.10
+faster-whisper>=1.0

@@ -153,6 +153,30 @@ def test_load_whisper_model_raises_readable_error_when_missing(monkeypatch):
         raise AssertionError("Expected missing faster-whisper to raise RuntimeError")
 
 
+def test_audio_to_txt_checks_optional_dependency_before_ffmpeg(monkeypatch, tmp_path: Path):
+    source = tmp_path / "speech.mp3"
+    source.write_bytes(b"fake audio")
+    monkeypatch.setattr(
+        transcription_converter,
+        "ensure_transcription_dependency_available",
+        lambda: (_ for _ in ()).throw(RuntimeError(FASTER_WHISPER_ERROR_MESSAGE)),
+    )
+    monkeypatch.setattr(
+        transcription_converter,
+        "normalize_audio_to_wav",
+        lambda input_path, output_dir: (_ for _ in ()).throw(
+            AssertionError("should not preprocess audio")
+        ),
+    )
+
+    try:
+        audio_to_txt(source, tmp_path)
+    except RuntimeError as exc:
+        assert str(exc) == FASTER_WHISPER_ERROR_MESSAGE
+    else:
+        raise AssertionError("Expected missing faster-whisper to raise RuntimeError")
+
+
 def test_transcribe_audio_segments_uses_model_without_downloading(monkeypatch, tmp_path: Path):
     audio_path = tmp_path / "speech.wav"
     audio_path.write_bytes(b"fake audio")

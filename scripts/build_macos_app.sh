@@ -9,6 +9,7 @@ APP_NAME="FileMorph"
 APP_VERSION="${FILEMORPH_VERSION:-0.7.0}"
 PLIST_VERSION="${APP_VERSION%%-*}"
 BUILD_CHANNEL="${FILEMORPH_BUILD_CHANNEL:-local}"
+BUILD_PROFILE="${FILEMORPH_BUILD_PROFILE:-lite}"
 APP_DIR="$PROJECT_ROOT/dist/$APP_NAME.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
@@ -20,8 +21,31 @@ EXECUTABLE="$MACOS_DIR/$APP_NAME"
 PLIST="$CONTENTS_DIR/Info.plist"
 ICON_FILE="$RESOURCES_DIR/FileMorph.icns"
 
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --profile)
+      if [[ $# -lt 2 ]]; then
+        echo "--profile requires lite or full" >&2
+        exit 1
+      fi
+      BUILD_PROFILE="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+if [[ "$BUILD_PROFILE" != "lite" && "$BUILD_PROFILE" != "full" ]]; then
+  echo "Profile must be lite or full" >&2
+  exit 1
+fi
+
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$BUNDLE_SOURCE_ROOT"
+echo "$BUILD_PROFILE" > "$BUNDLE_APP_ROOT/build-profile.txt"
 
 ICON_PYTHON="python3"
 if [[ -x "$PROJECT_ROOT/.venv/bin/python" ]]; then
@@ -51,7 +75,13 @@ if [[ -d "$PROJECT_ROOT/.streamlit" ]]; then
     "$PROJECT_ROOT/.streamlit/" "$BUNDLE_SOURCE_ROOT/.streamlit/"
 fi
 
-for runtime_file in requirements.txt requirements-desktop.txt README.md LICENSE; do
+for runtime_file in \
+  requirements.txt \
+  requirements-runtime-core.txt \
+  requirements-runtime-heavy.txt \
+  requirements-desktop.txt \
+  README.md \
+  LICENSE; do
   if [[ -f "$PROJECT_ROOT/$runtime_file" ]]; then
     rsync -a "$PROJECT_ROOT/$runtime_file" "$BUNDLE_SOURCE_ROOT/$runtime_file"
   fi
@@ -68,6 +98,50 @@ if ! "$PROJECT_ROOT/.venv/bin/python" -c "import PIL.Image, streamlit, webview" 
   echo "Run: .venv/bin/python -m pip install -r requirements-desktop.txt" >&2
   exit 1
 fi
+
+prune_site_package_patterns() {
+  local site_packages="$1"
+  shift
+
+  for pattern in "$@"; do
+    find "$site_packages" -maxdepth 1 -name "$pattern" -exec rm -rf {} +
+  done
+}
+
+prune_lite_runtime() {
+  local site_packages
+  while IFS= read -r site_packages; do
+    prune_site_package_patterns "$site_packages" \
+      "av" \
+      "av-*.dist-info" \
+      "ctranslate2" \
+      "ctranslate2-*.dist-info" \
+      "cv2" \
+      "faster_whisper" \
+      "faster_whisper-*.dist-info" \
+      "fitz" \
+      "fire" \
+      "fire-*.dist-info" \
+      "hf_xet" \
+      "hf_xet-*.dist-info" \
+      "huggingface_hub" \
+      "huggingface_hub-*.dist-info" \
+      "onnxruntime" \
+      "onnxruntime-*.dist-info" \
+      "opencv_python*" \
+      "pdf2docx" \
+      "pdf2docx-*.dist-info" \
+      "pymupdf" \
+      "pymupdf-*.dist-info" \
+      "PyMuPDF*" \
+      "pytesseract" \
+      "pytesseract-*.dist-info" \
+      "tokenizers" \
+      "tokenizers-*.dist-info" \
+      "tqdm" \
+      "tqdm-*.dist-info"
+  done < <(find "$BUNDLE_VENV_DIR/lib" -type d -name site-packages)
+}
 
 echo "Bundling existing Python environment into $BUNDLE_VENV_DIR"
 rsync -a \
@@ -96,6 +170,10 @@ if [[ -d "$BUNDLE_VENV_DIR" ]]; then
   find "$BUNDLE_VENV_DIR" -type f -name "*.map" -delete
   find "$BUNDLE_VENV_DIR" -name "._*" -delete
   rm -rf "$BUNDLE_VENV_DIR/share/jupyter" "$BUNDLE_VENV_DIR/share/man"
+  if [[ "$BUILD_PROFILE" == "lite" ]]; then
+    echo "Pruning optional heavy dependencies for lite profile"
+    prune_lite_runtime
+  fi
 fi
 
 cat > "$PLIST" <<PLIST
@@ -150,6 +228,7 @@ export FILEMORPH_DATA_DIR="\$DATA_ROOT"
 export FILEMORPH_RUNTIME="local"
 export FILEMORPH_APP_VERSION="${APP_VERSION}"
 export FILEMORPH_BUILD_CHANNEL="${BUILD_CHANNEL}"
+export FILEMORPH_BUILD_PROFILE="${BUILD_PROFILE}"
 export STREAMLIT_SERVER_HEADLESS="true"
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:\$PATH"
 

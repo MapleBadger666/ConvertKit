@@ -59,6 +59,13 @@ desktop launcher, Streamlit config, requirements metadata, and bundled Python
 runtime needed to run `FileMorph.app`, but they do not include development
 folders such as `tests/`, `docs/`, or `audits/`.
 
+macOS installers can be built in two profiles:
+
+- `lite`: default release profile. Keeps the desktop shell and common
+  conversions while excluding optional heavy Python packages for transcription,
+  OCR, and PDF-to-DOCX.
+- `full`: keeps the full dependency set for advanced local workflows.
+
 Both install the same local WebView app at:
 
 ```text
@@ -92,14 +99,15 @@ Then double-click:
 Build release installers:
 
 ```bash
-./scripts/build_macos_dmg.sh
-./scripts/build_macos_pkg.sh
+./scripts/build_macos_dmg.sh --profile lite
+./scripts/build_macos_pkg.sh --profile lite
 ```
 
 Run the full macOS release build and verification flow:
 
 ```bash
 ./scripts/release_macos.sh v0.7.0-dev
+./scripts/release_macos.sh v0.7.0-dev --profile full
 ./scripts/verify_release_assets.sh
 ./scripts/audit_macos_app_size.sh
 ```
@@ -152,6 +160,15 @@ requiring a GitHub Release tag.
 The desktop app and the online demo share the same UI entry point:
 `app/main.py`. The difference is where it runs: locally inside
 `FileMorph.app`, or remotely on a demo server.
+
+Dependency manifests are split by runtime profile:
+
+```text
+requirements-runtime-core.txt    Default lite runtime
+requirements-runtime-heavy.txt   Optional OCR, PDF-to-DOCX, and transcription dependencies
+requirements.txt                 Full online/development dependency set
+requirements-desktop.txt         Full desktop development runtime with WebView dependencies
+```
 
 GitHub uploads should include the source code and documentation, but not local
 runtime artifacts such as `.venv/`, `dist/`, `uploads/`, `output/`, or `logs/`.

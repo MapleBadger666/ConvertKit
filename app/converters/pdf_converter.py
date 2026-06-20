@@ -18,6 +18,9 @@ from app.services.file_service import (
 POPPLER_ERROR_MESSAGE = (
     "PDF-to-PNG requires Poppler. On macOS, install it with: brew install poppler"
 )
+OPTIONAL_PDF_DOCX_DEPENDENCY_ERROR_MESSAGE = (
+    "This feature requires optional PDF-to-DOCX dependencies. Please install the full version."
+)
 
 
 def ensure_pdf_image_save_support() -> None:
@@ -151,7 +154,7 @@ def pdf_to_docx(pdf_path: str | Path, output_dir: str | Path = OUTPUT_DIR) -> Pa
     try:
         from pdf2docx import Converter
     except ImportError as exc:
-        raise RuntimeError("pdf2docx is required for PDF to DOCX conversion.") from exc
+        raise RuntimeError(OPTIONAL_PDF_DOCX_DEPENDENCY_ERROR_MESSAGE) from exc
 
     output_path = unique_output_path(source, "docx", output_dir)
     converter = Converter(str(source))

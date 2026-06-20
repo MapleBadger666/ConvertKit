@@ -15,8 +15,7 @@ from app.services.file_service import (
 
 
 FASTER_WHISPER_ERROR_MESSAGE = (
-    "Audio transcription requires faster-whisper. Install dependencies with: "
-    "python -m pip install -r requirements.txt"
+    "This feature requires optional transcription dependencies. Please install the full version."
 )
 AUDIO_PREPROCESSING_ERROR_MESSAGE = (
     "Audio preprocessing failed. Make sure ffmpeg is installed and the file has a "
@@ -133,12 +132,21 @@ def normalize_audio_to_wav(
 
 
 def load_whisper_model(model_size: str):
+    WhisperModel = load_whisper_model_class()
+    return WhisperModel(model_size, device="cpu", compute_type="int8")
+
+
+def load_whisper_model_class():
     try:
         from faster_whisper import WhisperModel
     except ImportError as exc:
         raise RuntimeError(FASTER_WHISPER_ERROR_MESSAGE) from exc
 
-    return WhisperModel(model_size, device="cpu", compute_type="int8")
+    return WhisperModel
+
+
+def ensure_transcription_dependency_available() -> None:
+    load_whisper_model_class()
 
 
 def transcribe_audio_segments(
@@ -169,6 +177,7 @@ def audio_to_txt(
     if not is_supported_audio(source):
         raise ValueError(f"Unsupported audio file: {source.name}")
 
+    ensure_transcription_dependency_available()
     output_directory = ensure_directory(output_dir)
     output_path = unique_output_path(source, "txt", output_directory)
     with tempfile.TemporaryDirectory(dir=output_directory) as temporary_dir:
@@ -192,6 +201,7 @@ def video_to_txt(
     if not is_supported_video(source):
         raise ValueError(f"Unsupported video file: {source.name}")
 
+    ensure_transcription_dependency_available()
     output_directory = ensure_directory(output_dir)
     output_path = unique_output_path(source, "txt", output_directory)
     with tempfile.TemporaryDirectory(dir=output_directory) as temporary_dir:

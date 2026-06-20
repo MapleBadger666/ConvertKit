@@ -23,6 +23,12 @@ tests, docs, and audit notes. The macOS Release installers contain only runtime
 files needed by `FileMorph.app`: the app package, desktop WebView launcher,
 Streamlit config, requirements metadata, and bundled Python environment.
 
+macOS release builds support two runtime profiles:
+
+- `lite`: default. Excludes optional heavy Python dependencies for
+  transcription, OCR, and PDF-to-DOCX so the installer is smaller.
+- `full`: keeps the complete dependency set for advanced local workflows.
+
 Unsigned builds may trigger macOS Gatekeeper. Tell users to right-click
 `FileMorph.app`, choose Open, then confirm. A signed and notarized build can
 remove that extra step later.
@@ -51,6 +57,7 @@ Build release artifacts:
 
 ```bash
 ./scripts/release_macos.sh v0.7.0-dev
+./scripts/release_macos.sh v0.7.0-dev --profile full
 ```
 
 The release script runs tests, validates shell script syntax, builds the app,
@@ -60,8 +67,8 @@ does not commit, push, tag, or create a GitHub Release.
 For targeted builds, use:
 
 ```bash
-./scripts/build_macos_dmg.sh
-./scripts/build_macos_pkg.sh
+./scripts/build_macos_dmg.sh --profile lite
+./scripts/build_macos_pkg.sh --profile lite
 ./scripts/audit_macos_app_size.sh
 ./scripts/verify_release_assets.sh
 ```
@@ -85,6 +92,20 @@ It includes the Python app, desktop launcher, Streamlit config, requirements
 metadata, and lightweight user-facing docs. It excludes development-only folders
 such as `tests/`, `docs/`, `audits/`, `.github/`, `dist/`, `.venv/`, `uploads/`,
 `output/`, and `logs/`.
+
+Dependency manifests are split by runtime profile:
+
+```text
+requirements-runtime-core.txt
+requirements-runtime-heavy.txt
+requirements.txt
+requirements-desktop.txt
+```
+
+The lite profile keeps core packages and prunes optional heavy packages only
+inside `dist/FileMorph.app`. It does not modify the project `.venv` or remove
+feature code from the repository. If a lite user triggers a missing heavy
+feature, FileMorph shows a clear message asking for the full version.
 
 The build requires a usable project `.venv` with the desktop dependencies
 installed. It bundles that runtime inside:

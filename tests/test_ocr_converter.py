@@ -1,4 +1,5 @@
 from pathlib import Path
+import builtins
 
 from app.converters import ocr_converter
 from app.converters.ocr_converter import (
@@ -6,6 +7,7 @@ from app.converters.ocr_converter import (
     OCR_MODE_DOCUMENT,
     OCR_MODE_SCREENSHOT,
     OCR_MODE_STANDARD,
+    OPTIONAL_OCR_DEPENDENCY_ERROR_MESSAGE,
     TESSERACT_ERROR_MESSAGE,
     ensure_tesseract_available,
     image_to_text,
@@ -165,3 +167,28 @@ def test_normalize_ocr_mode_rejects_unknown_mode():
         assert "Unsupported OCR mode" in str(exc)
     else:
         raise AssertionError("Expected unknown OCR mode to raise ValueError")
+
+
+def test_image_to_text_missing_optional_dependency_has_clear_error(
+    monkeypatch,
+    tmp_path: Path,
+):
+    source = tmp_path / "scan.png"
+    Image.new("RGB", (8, 8), "white").save(source)
+    original_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "pytesseract":
+            raise ImportError("missing pytesseract")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(ocr_converter, "ensure_tesseract_available", lambda: None)
+    monkeypatch.setattr(ocr_converter, "validate_ocr_language_available", lambda language: None)
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    try:
+        image_to_text(source)
+    except RuntimeError as exc:
+        assert str(exc) == OPTIONAL_OCR_DEPENDENCY_ERROR_MESSAGE
+    else:
+        raise AssertionError("Expected missing pytesseract to raise RuntimeError")

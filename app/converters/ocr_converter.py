@@ -20,6 +20,9 @@ from app.services.file_service import (
 TESSERACT_ERROR_MESSAGE = (
     "OCR requires Tesseract. On macOS, install it with: brew install tesseract"
 )
+OPTIONAL_OCR_DEPENDENCY_ERROR_MESSAGE = (
+    "This feature requires optional OCR dependencies. Please install the full version."
+)
 OCR_LANGUAGE_ERROR_PREFIX = "OCR language data is not installed for"
 OCR_MODE_STANDARD = "standard"
 OCR_MODE_SCREENSHOT = "screenshot"
@@ -145,12 +148,22 @@ def prepare_image_for_ocr_mode(image: Image.Image, mode: str) -> Image.Image:
     )
 
 
-def _image_to_text(image: Image.Image, language: str) -> str:
+def load_pytesseract():
     try:
         import pytesseract
         from pytesseract import TesseractNotFoundError
     except ImportError as exc:
-        raise RuntimeError("pytesseract is required for OCR conversion.") from exc
+        raise RuntimeError(OPTIONAL_OCR_DEPENDENCY_ERROR_MESSAGE) from exc
+
+    return pytesseract, TesseractNotFoundError
+
+
+def ensure_optional_ocr_dependency_available() -> None:
+    load_pytesseract()
+
+
+def _image_to_text(image: Image.Image, language: str) -> str:
+    pytesseract, TesseractNotFoundError = load_pytesseract()
 
     try:
         return pytesseract.image_to_string(image, lang=language)
@@ -168,6 +181,7 @@ def image_to_text(
         raise ValueError(f"Unsupported image format for OCR: {source.name}")
 
     ensure_heif_support(source)
+    ensure_optional_ocr_dependency_available()
     ensure_tesseract_available()
     validate_ocr_language_available(language)
     with Image.open(source) as image:
@@ -185,6 +199,7 @@ def pdf_to_text_with_ocr(
     if not is_supported_pdf(source):
         raise ValueError(f"Unsupported PDF file for OCR: {source.name}")
 
+    ensure_optional_ocr_dependency_available()
     ensure_tesseract_available()
     validate_ocr_language_available(language)
     normalized_mode = normalize_ocr_mode(mode)
