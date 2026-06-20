@@ -36,9 +36,9 @@ from app.converters.office_converter import (
     pptx_to_docx,
     pptx_to_pdf,
 )
+from app.runtime_paths import DATA_ROOT, LOG_DIR, OUTPUT_DIR, UPLOAD_DIR
 from app.converters.transcription_converter import audio_to_txt, video_to_txt
 from app.services.file_service import (
-    OUTPUT_DIR,
     create_zip_archive,
     ensure_directory,
     is_supported_audio,
@@ -49,6 +49,7 @@ from app.services.file_service import (
     save_uploaded_files,
     unique_output_path,
 )
+from app.version import APP_NAME, APP_VERSION, BUILD_CHANNEL
 
 
 CONVERSION_OPTIONS = {
@@ -203,6 +204,10 @@ def is_online_runtime() -> bool:
     return RUNTIME_MODE in {"cloud", "demo", "online", "remote"}
 
 
+def is_desktop_runtime() -> bool:
+    return RUNTIME_MODE in {"desktop", "local"} and not is_online_runtime()
+
+
 def app_intro_text() -> str:
     if is_online_runtime():
         return (
@@ -227,6 +232,17 @@ def runtime_privacy_text() -> str:
         "Local mode: files stay on this machine, uploads are saved to uploads/, "
         "and generated outputs are saved to output/."
     )
+
+
+def local_app_info_rows() -> list[dict[str, str]]:
+    return [
+        {"Item": "App version", "Value": APP_VERSION},
+        {"Item": "Build channel", "Value": BUILD_CHANNEL},
+        {"Item": "User data directory", "Value": str(DATA_ROOT)},
+        {"Item": "Uploads directory", "Value": str(UPLOAD_DIR)},
+        {"Item": "Output directory", "Value": str(OUTPUT_DIR)},
+        {"Item": "Logs directory", "Value": str(LOG_DIR)},
+    ]
 
 
 def readable_error(exc: Exception) -> str:
@@ -888,10 +904,17 @@ def show_txt_preview(file_path: Path) -> None:
 
 
 def main() -> None:
-    st.set_page_config(page_title="FileMorph", page_icon="FM", layout="centered")
-    st.title("FileMorph")
+    st.set_page_config(page_title=APP_NAME, page_icon="FM", layout="centered")
+    st.title(APP_NAME)
     st.caption(app_intro_text())
     st.write(runtime_privacy_text())
+
+    if is_desktop_runtime():
+        with st.expander("About FileMorph"):
+            st.table(local_app_info_rows())
+            st.caption(
+                "Open the output directory from Finder with the path shown above."
+            )
 
     with st.expander("System dependencies"):
         st.table(system_dependency_rows())

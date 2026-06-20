@@ -14,17 +14,25 @@ import urllib.request
 from pathlib import Path
 
 
-DEFAULT_DATA_DIR = Path.home() / "Library" / "Application Support" / "FileMorph"
-os.environ.setdefault("FILEMORPH_DATA_DIR", str(DEFAULT_DATA_DIR))
 os.environ.setdefault("FILEMORPH_RUNTIME", "local")
 
-DATA_DIR = Path(os.environ["FILEMORPH_DATA_DIR"])
-LOG_DIR = DATA_DIR / "logs"
-LOG_DIR.mkdir(parents=True, exist_ok=True)
-DESKTOP_LOG = LOG_DIR / "filemorph-desktop-ui.log"
-LOCK_FILE = DATA_DIR / "filemorph.lock"
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from app.runtime_paths import (  # noqa: E402
+    DATA_ROOT,
+    DESKTOP_LOG,
+    LOCK_FILE,
+    LOG_DIR,
+    OUTPUT_DIR,
+    UPLOAD_DIR,
+    ensure_runtime_directories,
+)
+from app.version import APP_NAME, APP_VERSION, BUILD_CHANNEL  # noqa: E402
+
+os.environ.setdefault("FILEMORPH_DATA_DIR", str(DATA_ROOT))
+
 STREAMLIT_ENTRY = PROJECT_ROOT / "app" / "main.py"
 ACTIVE_PROCESS: subprocess.Popen | None = None
 SHUTTING_DOWN = False
@@ -75,6 +83,7 @@ while True:
 
 
 def log_event(message: str) -> None:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     with DESKTOP_LOG.open("a", encoding="utf-8") as log:
         log.write(f"[{timestamp}] {message}\n")
@@ -118,6 +127,7 @@ def wait_for_streamlit(url: str, process: subprocess.Popen, timeout: float = 45.
         try:
             with urllib.request.urlopen(health_url, timeout=1.5) as response:
                 if response.status == 200:
+                    log_event(f"Streamlit health check passed: {health_url}")
                     return
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             last_error = str(exc)
@@ -131,14 +141,17 @@ def start_streamlit(port: int) -> subprocess.Popen:
     env = os.environ.copy()
     env.update(
         {
-            "FILEMORPH_DATA_DIR": str(DATA_DIR),
+            "FILEMORPH_DATA_DIR": str(DATA_ROOT),
             "FILEMORPH_RUNTIME": "local",
+            "FILEMORPH_APP_VERSION": APP_VERSION,
+            "FILEMORPH_BUILD_CHANNEL": BUILD_CHANNEL,
             "STREAMLIT_SERVER_HEADLESS": "true",
             "STREAMLIT_BROWSER_GATHER_USAGE_STATS": "false",
             "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:"
             + env.get("PATH", ""),
         }
     )
+    log_event(f"Streamlit port: {port}")
     command = [
         sys.executable,
         "-m",
@@ -183,6 +196,7 @@ def start_streamlit_watchdog(process: subprocess.Popen) -> subprocess.Popen:
 
 def stop_streamlit(process: subprocess.Popen | None) -> None:
     if process is None or process.poll() is not None:
+        log_event("Streamlit already stopped")
         return
 
     log_event("Stopping Streamlit")
@@ -191,11 +205,13 @@ def stop_streamlit(process: subprocess.Popen | None) -> None:
 
     try:
         process.wait(timeout=6)
+        log_event(f"Streamlit stopped with code {process.returncode}")
     except subprocess.TimeoutExpired:
         log_event("Streamlit did not stop in time; killing it")
         with contextlib.suppress(ProcessLookupError):
             os.killpg(process.pid, signal.SIGKILL)
         process.wait(timeout=3)
+        log_event(f"Streamlit killed with code {process.returncode}")
 
 
 def handle_shutdown_signal(signum: int, _frame: object) -> None:
@@ -220,14 +236,14 @@ def show_error(message: str) -> None:
     with contextlib.suppress(Exception):
         import tkinter.messagebox
 
-        tkinter.messagebox.showerror("FileMorph", message)
+        tkinter.messagebox.showerror(APP_NAME, message)
 
 
 def open_in_webview(url: str) -> None:
     import webview
 
-    log_event(f"Opening FileMorph WebView at {url}")
-    window = webview.create_window("FileMorph", url, width=1180, height=820, min_size=(920, 640))
+    log_event(f"Opening {APP_NAME} WebView at {url}")
+    window = webview.create_window(APP_NAME, url, width=1200, height=800, min_size=(920, 640))
     window.events.closed += lambda: stop_streamlit(ACTIVE_PROCESS)
     webview.start()
 
@@ -245,9 +261,17 @@ def main() -> int:
                 "Rebuild FileMorph.app after installing requirements-desktop.txt."
             ) from exc
 
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        (DATA_DIR / "uploads").mkdir(exist_ok=True)
-        (DATA_DIR / "output").mkdir(exist_ok=True)
+        ensure_runtime_directories()
+        bundled_environment = "/Contents/Resources/FileMorph/.venv/" in sys.executable
+        log_event(f"Starting {APP_NAME} {APP_VERSION} ({BUILD_CHANNEL})")
+        log_event(f"Startup time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        log_event(f"Python executable: {sys.executable}")
+        log_event(f"Bundled environment: {bundled_environment}")
+        log_event(f"Project root: {PROJECT_ROOT}")
+        log_event(f"Data root: {DATA_ROOT}")
+        log_event(f"Upload directory: {UPLOAD_DIR}")
+        log_event(f"Output directory: {OUTPUT_DIR}")
+        log_event(f"Log directory: {LOG_DIR}")
         log_event(f"FileMorph log path: {DESKTOP_LOG}")
         LOCK_HANDLE = acquire_single_instance_lock()
 

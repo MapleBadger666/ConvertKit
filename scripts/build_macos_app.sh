@@ -6,7 +6,8 @@ export COPYFILE_DISABLE=1
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 APP_NAME="FileMorph"
-APP_VERSION="${FILEMORPH_VERSION:-0.5.0}"
+APP_VERSION="${FILEMORPH_VERSION:-0.7.0}"
+BUILD_CHANNEL="${FILEMORPH_BUILD_CHANNEL:-local}"
 APP_DIR="$PROJECT_ROOT/dist/$APP_NAME.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
@@ -118,6 +119,8 @@ LOG_FILE="\$LOG_DIR/filemorph.log"
 
 export FILEMORPH_DATA_DIR="\$DATA_ROOT"
 export FILEMORPH_RUNTIME="local"
+export FILEMORPH_APP_VERSION="${APP_VERSION}"
+export FILEMORPH_BUILD_CHANNEL="${BUILD_CHANNEL}"
 export STREAMLIT_SERVER_HEADLESS="true"
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:\$PATH"
 

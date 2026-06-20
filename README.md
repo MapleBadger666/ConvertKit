@@ -123,8 +123,24 @@ Its runtime files live outside the app bundle in:
 ~/Library/Application Support/FileMorph/
 ```
 
-That folder contains `uploads/`, `output/`, and logs. The app does not install
-key dependencies on first launch.
+That folder contains `uploads/`, `output/`, and `logs/`. The desktop launcher
+creates those folders automatically and does not write runtime files back into
+the app bundle. The app does not install key dependencies on first launch.
+
+Version and build metadata live in:
+
+```text
+app/version.py
+```
+
+Runtime path constants live in:
+
+```text
+app/runtime_paths.py
+```
+
+The installed app can pass build-time version values into the same code without
+requiring a GitHub Release tag.
 
 The desktop app and the online demo share the same UI entry point:
 `app/main.py`. The difference is where it runs: locally inside
@@ -229,6 +245,8 @@ Online demo mode:
 app/
   converters/      Conversion implementations
   services/        File saving, output naming, ZIP helpers
+  runtime_paths.py Stable user data, upload, output, and log paths
+  version.py       App name, version, and build channel metadata
   main.py          Streamlit web demo UI and workflow orchestration
 desktop/
   main.py          Local WebView launcher for the shared Streamlit UI

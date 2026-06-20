@@ -10,7 +10,7 @@ APP_NAME="FileMorph"
 APP_PATH="$DIST_DIR/$APP_NAME.app"
 PKG_PATH="$DIST_DIR/FileMorph-Installer.pkg"
 IDENTIFIER="local.filemorph.desktop"
-VERSION="${FILEMORPH_VERSION:-0.5.0}"
+VERSION="${FILEMORPH_VERSION:-0.7.0}"
 PKG_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/filemorph-pkg.XXXXXX")"
 
 cleanup() {

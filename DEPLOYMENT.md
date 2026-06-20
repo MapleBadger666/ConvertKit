@@ -87,14 +87,34 @@ Runtime state is stored outside the bundle in:
 ~/Library/Application Support/FileMorph/
 ```
 
-That folder contains `uploads/`, `output/`, and logs. This means
+That folder contains `uploads/`, `output/`, and `logs/`. The desktop launcher
+creates those folders automatically, keeps runtime files out of the app bundle,
+and writes startup diagnostics to `logs/filemorph-desktop-ui.log`. This means
 `/Applications/FileMorph.app` does not depend on the original project folder
 after installation and does not install key dependencies on first launch.
 
 The local app starts `desktop/main.py`, launches the same Streamlit UI used by
 the online demo as an internal localhost service, and embeds it in a FileMorph
 WebView window. It does not open Safari, Chrome, Edge, or the system default
-browser. Closing the FileMorph window stops the local Streamlit service.
+browser. Closing the FileMorph window stops the local Streamlit service. The
+launcher also records the Python executable, bundled-runtime status, selected
+Streamlit port, health check result, and shutdown cleanup result in the desktop
+log so startup failures can be diagnosed without a blank window.
+
+App version and build channel metadata are defined in:
+
+```text
+app/version.py
+```
+
+Runtime path constants are defined in:
+
+```text
+app/runtime_paths.py
+```
+
+The source defaults do not depend on a GitHub Release tag. Packaged builds can
+override the version through build-time environment variables.
 
 Do not upload local runtime folders to GitHub. `.gitignore` excludes `.venv/`,
 `dist/`, `uploads/`, `output/`, `logs/`, Python caches, and `.DS_Store`.

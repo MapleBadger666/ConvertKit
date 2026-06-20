@@ -33,6 +33,7 @@ from app.main import (
     get_available_ocr_language_options,
     get_conversion_history,
     is_low_quality_ocr_text,
+    local_app_info_rows,
     job_summary,
     mark_job_failed,
     mark_job_running,
@@ -508,6 +509,17 @@ def test_conversion_help_text_covers_major_groups():
 def test_default_runtime_copy_is_local_first():
     assert "local-first" in app_intro_text()
     assert "Local mode" in runtime_privacy_text()
+
+
+def test_local_app_info_rows_include_version_and_runtime_paths():
+    rows = local_app_info_rows()
+    values_by_item = {row["Item"]: row["Value"] for row in rows}
+
+    assert values_by_item["App version"]
+    assert values_by_item["Build channel"]
+    assert values_by_item["User data directory"]
+    assert values_by_item["Output directory"].endswith("output")
+    assert values_by_item["Logs directory"].endswith("logs")
 
 
 def test_get_allowed_upload_types_falls_back_to_all_supported_types():

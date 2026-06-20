@@ -1,15 +1,10 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from uuid import uuid4
 from zipfile import ZIP_DEFLATED, ZipFile
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATA_ROOT = Path(os.environ.get("FILEMORPH_DATA_DIR", PROJECT_ROOT))
-OUTPUT_DIR = DATA_ROOT / "output"
-UPLOAD_DIR = DATA_ROOT / "uploads"
+from app.runtime_paths import DATA_ROOT, OUTPUT_DIR, PROJECT_ROOT, UPLOAD_DIR
 
 SUPPORTED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "heic", "heif"}
 SUPPORTED_PDF_EXTENSIONS = {"pdf"}
