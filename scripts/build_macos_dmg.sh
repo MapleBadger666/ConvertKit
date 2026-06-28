@@ -40,13 +40,28 @@ cleanup() {
 }
 trap cleanup EXIT
 
+clean_metadata() {
+  local path="$1"
+  find "$path" -name "._*" -delete
+  find "$path" -name ".DS_Store" -delete
+  if command -v dot_clean >/dev/null 2>&1; then
+    dot_clean -m "$path" || true
+  fi
+  if command -v xattr >/dev/null 2>&1; then
+    xattr -cr "$path" || true
+  fi
+  find "$path" -name "._*" -delete
+  find "$path" -name ".DS_Store" -delete
+}
+
 "$PROJECT_ROOT/scripts/build_macos_app.sh" --profile "$BUILD_PROFILE"
 
 rm -f "$DMG_PATH"
 mkdir -p "$DMG_ROOT"
+clean_metadata "$APP_PATH"
 ditto --norsrc --noextattr "$APP_PATH" "$DMG_ROOT/$APP_NAME.app"
 ln -s /Applications "$DMG_ROOT/Applications"
-find "$DMG_ROOT" -name "._*" -delete
+clean_metadata "$DMG_ROOT"
 
 hdiutil create \
   -volname "$VOLUME_NAME" \

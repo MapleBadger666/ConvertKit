@@ -1,6 +1,6 @@
 # FileMorph Stage 4.1 App Size Audit
 
-Generated: 2026-06-20 20:22:52 CST
+Generated: 2026-06-27 23:15:02 CST
 
 Current profile: lite
 
@@ -28,24 +28,24 @@ Current profile: lite
 
 | Artifact | Size | Bytes |
 | --- | ---: | ---: |
-| dist/FileMorph.app | 301M | 316067840 |
-| dist/FileMorph.app/Contents/Resources/FileMorph | 301M | 315813888 |
+| dist/FileMorph.app | 301M | 315650048 |
+| dist/FileMorph.app/Contents/Resources/FileMorph | 301M | 315396096 |
 | dist/FileMorph.app/Contents/Resources/FileMorph/source | 160K | 163840 |
-| dist/FileMorph.app/Contents/Resources/FileMorph/.venv | 301M | 315645952 |
-| dist/FileMorph-macOS.dmg | 130M | 135880704 |
-| dist/FileMorph-Installer.pkg | 84M | 88449024 |
+| dist/FileMorph.app/Contents/Resources/FileMorph/.venv | 301M | 315228160 |
+| dist/FileMorph-macOS.dmg | 132M | 138285056 |
+| dist/FileMorph-Installer.pkg | 83M | 87179264 |
 
 ## Largest Files And Directories
 
 ```text
-301M	/Users/heqiuyan/Desktop/ConvertKit/dist/FileMorph.app/Contents/Resources/FileMorph/.venv/lib/python3.11/site-packages
-301M	/Users/heqiuyan/Desktop/ConvertKit/dist/FileMorph.app/Contents/Resources/FileMorph/.venv/lib/python3.11
-301M	/Users/heqiuyan/Desktop/ConvertKit/dist/FileMorph.app/Contents/Resources/FileMorph/.venv/lib
 301M	/Users/heqiuyan/Desktop/ConvertKit/dist/FileMorph.app/Contents/Resources/FileMorph/.venv
 301M	/Users/heqiuyan/Desktop/ConvertKit/dist/FileMorph.app/Contents/Resources/FileMorph
 301M	/Users/heqiuyan/Desktop/ConvertKit/dist/FileMorph.app/Contents/Resources
 301M	/Users/heqiuyan/Desktop/ConvertKit/dist/FileMorph.app/Contents
 301M	/Users/heqiuyan/Desktop/ConvertKit/dist/FileMorph.app
+300M	/Users/heqiuyan/Desktop/ConvertKit/dist/FileMorph.app/Contents/Resources/FileMorph/.venv/lib/python3.11/site-packages
+300M	/Users/heqiuyan/Desktop/ConvertKit/dist/FileMorph.app/Contents/Resources/FileMorph/.venv/lib/python3.11
+300M	/Users/heqiuyan/Desktop/ConvertKit/dist/FileMorph.app/Contents/Resources/FileMorph/.venv/lib
 117M	/Users/heqiuyan/Desktop/ConvertKit/dist/FileMorph.app/Contents/Resources/FileMorph/.venv/lib/python3.11/site-packages/pyarrow
  44M	/Users/heqiuyan/Desktop/ConvertKit/dist/FileMorph.app/Contents/Resources/FileMorph/.venv/lib/python3.11/site-packages/pyarrow/libarrow.2400.dylib
  25M	/Users/heqiuyan/Desktop/ConvertKit/dist/FileMorph.app/Contents/Resources/FileMorph/.venv/lib/python3.11/site-packages/pandas

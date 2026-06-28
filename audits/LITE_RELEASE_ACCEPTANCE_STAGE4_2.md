@@ -5,8 +5,8 @@
 - Test time: 2026-06-20 20:27 CST
 - Commit: `dc70634`
 - Build command: `./scripts/release_macos.sh v0.7.0-dev --profile lite`
-- Result: DMG path accepted. PKG payload accepted; direct `installer` automation was blocked by macOS administrator permission requirements.
-- Recommendation: Proceed toward `v0.7.0` release after one manual PKG installer click-through check on an admin account.
+- Result: DMG path accepted. PKG payload originally exposed AppleDouble metadata, then passed after packaging cleanup. Manual administrator PKG installation passed.
+- Recommendation: Proceed toward `v0.7.0` release preparation.
 
 ## Environment Checks
 
@@ -21,8 +21,8 @@
 
 | Artifact | Size | SHA256 |
 | --- | ---: | --- |
-| `dist/FileMorph-macOS.dmg` | 135,877,018 bytes / 130M | `b195e856c4ea0be57bd76e68559e8df0631ad1203acf0472f54d7a79a73a0acf` |
-| `dist/FileMorph-Installer.pkg` | 88,448,535 bytes / 84M | `efd754580e849211679ff5d6afc824eba53093987efde35f2bebf1a444a2e1d8` |
+| `dist/FileMorph-macOS.dmg` | 138,284,926 bytes / 132M | `e8d8795cfc0cd2e1f0a96a4be681d8f100eaabe748894d929f837259093db859` |
+| `dist/FileMorph-Installer.pkg` | 87,175,190 bytes / 83M | `18d25795afe02c93c80ebbfa047e3bd4865ea4d879f451744fe145e2f29a315a` |
 
 `./scripts/audit_macos_app_size.sh` and `./scripts/verify_release_assets.sh` both passed after rebuilding the lite artifacts.
 
@@ -72,15 +72,40 @@ Logs directory: /Users/heqiuyan/Library/Application Support/FileMorph/logs
 | Removed old `/Applications/FileMorph.app` | Passed |
 | Ran `installer -pkg dist/FileMorph-Installer.pkg -target /` | Blocked: `installer: Must be run as root to install this package.` |
 | Ran `sudo -n installer ...` | Blocked: `sudo: a password is required.` |
+| Ran manual administrator `sudo installer -pkg dist/FileMorph-Installer.pkg -target /` | Passed |
+| Confirmed `/Applications/FileMorph.app` after `sudo installer` | Passed. `/Applications/FileMorph.app` exists. |
 | Checked package payload | Passed. Payload contains `Applications/FileMorph.app`. |
 | Expanded package payload | Passed. Expanded App found at `/tmp/FileMorph-pkg-expanded/Payload/Applications/FileMorph.app`. |
 | Copied expanded payload App to `/Applications` | Passed as a non-installer fallback validation of the packaged App contents. |
-| Opened App from PKG payload | Passed |
-| External browser behavior | Passed. Launcher log shows WebView startup and no fallback browser. |
+| Opened App installed by PKG | Passed |
+| External browser behavior | Passed. App launches through the FileMorph WebView window; no Safari, Chrome, Edge, or default browser window opens. |
 | Page load | Passed. Streamlit health check succeeded. |
-| Quit cleanup | Passed. After quitting, no `FileMorph.app` or `streamlit run ... FileMorph.app` processes remained. |
+| Quit cleanup | Passed. After closing the App, no App-owned `FileMorph.app` or `streamlit run ... FileMorph.app` processes remained. |
 
-Note: direct PKG installation needs an admin password in this environment. A final manual double-click installer check is recommended before publishing `v0.7.0`.
+Note: direct PKG installation needs an admin password because the installer targets `/Applications`. Manual administrator installation has now passed.
+
+## PKG Packaging Hygiene Recheck
+
+Rechecked: 2026-06-21 00:24 CST
+
+| Check | Result |
+| --- | --- |
+| `./scripts/release_macos.sh v0.7.0-dev --profile lite` | Passed |
+| `pkgutil --payload-files dist/FileMorph-Installer.pkg \| grep -E '(^\|/)\._'` | Passed, no output |
+| `pkgutil --payload-files dist/FileMorph-Installer.pkg \| grep -Ei 'onnxruntime\|pymupdf\|cv2\|faster_whisper\|tokenizers\|hf_xet\|/av/'` | Passed, no output |
+| `./scripts/verify_release_assets.sh` | Passed |
+| `pytest -q` | `106 passed` |
+| `bash -n scripts/*.sh` | Passed |
+| External browser grep | No matches |
+
+Updated release artifacts after the packaging hygiene fix:
+
+| Artifact | Size | SHA256 |
+| --- | ---: | --- |
+| `dist/FileMorph-macOS.dmg` | 138,284,926 bytes / 132M | `e8d8795cfc0cd2e1f0a96a4be681d8f100eaabe748894d929f837259093db859` |
+| `dist/FileMorph-Installer.pkg` | 87,175,190 bytes / 83M | `18d25795afe02c93c80ebbfa047e3bd4865ea4d879f451744fe145e2f29a315a` |
+
+The PKG build now performs App bundle, DMG staging, PKG root, and final PKG payload metadata cleanup. If `pkgbuild` reintroduces AppleDouble metadata, the script rebuilds the PKG payload and BOM before final validation.
 
 ## Lite Core Functional Acceptance
 
@@ -115,18 +140,15 @@ These paths returned clear optional/full-version messages instead of `ImportErro
 | Path | Result |
 | --- | --- |
 | DMG-installed App quit | Passed. No matching `FileMorph.app` or App-owned `streamlit` processes remained. |
-| PKG payload App quit | Passed. No matching `FileMorph.app` or App-owned `streamlit` processes remained. |
+| PKG-installed App quit | Passed. No matching `FileMorph.app` or App-owned `streamlit` processes remained after closing the App. |
 
 ## Findings
 
-- PKG automation could not run through `installer` without administrator credentials. This is expected for a package targeting `/Applications`, but a manual admin-user installer check remains before public release.
-- `pkgutil --payload-files` showed AppleDouble `._*` metadata entries in the PKG payload even though `dist/FileMorph.app` itself had no `._*` files. This did not affect functional launch, but it is a packaging hygiene item to revisit.
+- PKG automation could not run through `installer` without administrator credentials. This is expected for a package targeting `/Applications`; the manual administrator `sudo installer` check has now passed.
+- Initial `pkgutil --payload-files` checks showed AppleDouble `._*` metadata entries in the PKG payload even though `dist/FileMorph.app` itself had no `._*` files. This has been fixed and the final payload check now has no AppleDouble output.
 
 ## Release Recommendation
 
-Recommended to enter `v0.7.0` release preparation after:
+Recommended to enter `v0.7.0` release preparation.
 
-1. Manual PKG install click-through with an admin password.
-2. Optional cleanup of AppleDouble metadata in the PKG payload if desired.
-
-The lite DMG path, lite runtime, core conversions, optional dependency messaging, logs, output paths, and process cleanup all passed.
+The lite DMG path, administrator PKG installation, lite runtime, core conversions, optional dependency messaging, logs, output paths, WebView launch behavior, and process cleanup all passed.

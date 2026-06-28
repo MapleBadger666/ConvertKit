@@ -140,7 +140,55 @@ prune_lite_runtime() {
       "tokenizers-*.dist-info" \
       "tqdm" \
       "tqdm-*.dist-info"
+    rm -rf "$site_packages/streamlit/.agents"
   done < <(find "$BUNDLE_VENV_DIR/lib" -type d -name site-packages)
+
+  rm -f \
+    "$BUNDLE_VENV_DIR"/bin/ct2-* \
+    "$BUNDLE_VENV_DIR"/bin/hf \
+    "$BUNDLE_VENV_DIR"/bin/huggingface-cli \
+    "$BUNDLE_VENV_DIR"/bin/onnxruntime_test \
+    "$BUNDLE_VENV_DIR"/bin/pdf2docx \
+    "$BUNDLE_VENV_DIR"/bin/pyav \
+    "$BUNDLE_VENV_DIR"/bin/pymupdf \
+    "$BUNDLE_VENV_DIR"/bin/pytesseract \
+    "$BUNDLE_VENV_DIR"/bin/tiny-agents \
+    "$BUNDLE_VENV_DIR"/bin/tqdm
+}
+
+clean_bundle_metadata() {
+  find "$APP_DIR" -name "._*" -delete
+  find "$APP_DIR" -name ".DS_Store" -delete
+  if command -v dot_clean >/dev/null 2>&1; then
+    dot_clean -m "$APP_DIR" || true
+  fi
+  if command -v xattr >/dev/null 2>&1; then
+    xattr -cr "$APP_DIR" || true
+  fi
+  find "$APP_DIR" -name "._*" -delete
+  find "$APP_DIR" -name ".DS_Store" -delete
+}
+
+validate_lite_runtime() {
+  local forbidden
+  forbidden="$(
+    find "$BUNDLE_VENV_DIR" \
+      \( -iname "*onnxruntime*" \
+      -o -iname "*pymupdf*" \
+      -o -iname "cv2" \
+      -o -iname "*faster_whisper*" \
+      -o -iname "*tokenizers*" \
+      -o -iname "*hf_xet*" \
+      -o -iname "av" \
+      -o -path "*/av/*" \) \
+      -print
+  )"
+
+  if [[ -n "$forbidden" ]]; then
+    echo "Lite runtime still contains optional heavy dependencies:" >&2
+    echo "$forbidden" >&2
+    exit 1
+  fi
 }
 
 echo "Bundling existing Python environment into $BUNDLE_VENV_DIR"
@@ -157,7 +205,6 @@ rsync -a \
 find "$BUNDLE_SOURCE_ROOT" -type d -name "__pycache__" -prune -exec rm -rf {} +
 find "$BUNDLE_SOURCE_ROOT" -type f -name "*.pyc" -delete
 find "$BUNDLE_SOURCE_ROOT" -type f -name "*.pyo" -delete
-find "$APP_DIR" -name "._*" -delete
 if [[ -d "$BUNDLE_VENV_DIR" ]]; then
   find "$BUNDLE_VENV_DIR" -type d -name "__pycache__" -prune -exec rm -rf {} +
   find "$BUNDLE_VENV_DIR" -type d -name ".pytest_cache" -prune -exec rm -rf {} +
@@ -173,8 +220,11 @@ if [[ -d "$BUNDLE_VENV_DIR" ]]; then
   if [[ "$BUILD_PROFILE" == "lite" ]]; then
     echo "Pruning optional heavy dependencies for lite profile"
     prune_lite_runtime
+    validate_lite_runtime
   fi
 fi
+
+clean_bundle_metadata
 
 cat > "$PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
